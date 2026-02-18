@@ -130,6 +130,61 @@ func (h *AdminHandler) SetBingo(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, map[string]interface{}{"message": "updated", "bingo": user.Bingo}, http.StatusOK)
 }
 
+func (h *AdminHandler) SetBalance(w http.ResponseWriter, r *http.Request) {
+	userID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		jsonError(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Balance int `json:"balance"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	store.WriteLock()
+	defer store.WriteUnlock()
+
+	user, err := h.Store.Users.GetByID(userID)
+	if err != nil {
+		jsonError(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	user.Balance = req.Balance
+	if err := h.Store.Users.Update(user); err != nil {
+		jsonError(w, "failed to update user", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResp(w, map[string]interface{}{"message": "updated", "balance": user.Balance}, http.StatusOK)
+}
+
+func (h *AdminHandler) ResetBingoBoard(w http.ResponseWriter, r *http.Request) {
+	userID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		jsonError(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	store.WriteLock()
+	defer store.WriteUnlock()
+
+	if err := h.Store.BingoBoards.DeleteByUserID(userID); err != nil {
+		jsonError(w, "failed to reset board", http.StatusInternalServerError)
+		return
+	}
+	if err := h.Store.BingoWinners.DeleteByUserID(userID); err != nil {
+		jsonError(w, "failed to reset winners", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResp(w, map[string]string{"message": "bingo board reset"}, http.StatusOK)
+}
+
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	store.ReadLock()
 	defer store.ReadUnlock()
@@ -145,6 +200,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		Username string `json:"username"`
 		IsAdmin  bool   `json:"is_admin"`
 		Bingo    bool   `json:"bingo"`
+		Balance  int    `json:"balance"`
 	}
 
 	result := make([]userInfo, 0, len(users))
@@ -154,10 +210,120 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 			Username: u.Username,
 			IsAdmin:  u.IsAdmin,
 			Bingo:    u.Bingo,
+			Balance:  u.Balance,
 		})
 	}
 
 	jsonResp(w, result, http.StatusOK)
+}
+
+type updateEventRequest struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Outcomes    []struct {
+		ID    int    `json:"id"`
+		Label string `json:"label"`
+	} `json:"outcomes"`
+}
+
+func (h *AdminHandler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
+	eventID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		jsonError(w, "invalid event id", http.StatusBadRequest)
+		return
+	}
+
+	var req updateEventRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.Title == "" {
+		jsonError(w, "title is required", http.StatusBadRequest)
+		return
+	}
+
+	store.WriteLock()
+	defer store.WriteUnlock()
+
+	event, err := h.Store.Events.GetByID(eventID)
+	if err != nil {
+		jsonError(w, "event not found", http.StatusNotFound)
+		return
+	}
+
+	event.Title = req.Title
+	event.Description = req.Description
+	if err := h.Store.Events.Update(event); err != nil {
+		jsonError(w, "failed to update event", http.StatusInternalServerError)
+		return
+	}
+
+	// Update outcomes: delete old, create new
+	if len(req.Outcomes) > 0 {
+		if err := h.Store.Outcomes.DeleteByEventID(eventID); err != nil {
+			jsonError(w, "failed to update outcomes", http.StatusInternalServerError)
+			return
+		}
+		for _, o := range req.Outcomes {
+			outcome := &models.Outcome{EventID: eventID, Label: o.Label}
+			if err := h.Store.Outcomes.Create(outcome); err != nil {
+				jsonError(w, "failed to create outcome", http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	h.Broker.Broadcast(sse.EventEventCreated, map[string]interface{}{
+		"event_id": event.ID,
+		"title":    event.Title,
+	})
+
+	jsonResp(w, map[string]string{"message": "event updated"}, http.StatusOK)
+}
+
+func (h *AdminHandler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
+	eventID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		jsonError(w, "invalid event id", http.StatusBadRequest)
+		return
+	}
+
+	store.WriteLock()
+	defer store.WriteUnlock()
+
+	if _, err := h.Store.Events.GetByID(eventID); err != nil {
+		jsonError(w, "event not found", http.StatusNotFound)
+		return
+	}
+
+	// Refund any open positions
+	positions, _ := h.Store.Positions.GetByEventID(eventID)
+	for _, p := range positions {
+		user, err := h.Store.Users.GetByID(p.UserID)
+		if err != nil {
+			continue
+		}
+		refund := int(p.Shares)
+		user.Balance += refund
+		h.Store.Users.Update(user)
+	}
+
+	h.Store.Positions.DeleteByEventID(eventID)
+	h.Store.Outcomes.DeleteByEventID(eventID)
+	h.Store.Transactions.DeleteByEventID(eventID)
+	h.Store.OddsSnapshots.DeleteByEventID(eventID)
+	if err := h.Store.Events.Delete(eventID); err != nil {
+		jsonError(w, "failed to delete event", http.StatusInternalServerError)
+		return
+	}
+
+	h.Broker.Broadcast(sse.EventEventResolved, map[string]interface{}{
+		"event_id": eventID,
+		"deleted":  true,
+	})
+
+	jsonResp(w, map[string]string{"message": "event deleted"}, http.StatusOK)
 }
 
 func (h *AdminHandler) ResolveEvent(w http.ResponseWriter, r *http.Request) {

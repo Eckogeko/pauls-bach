@@ -72,6 +72,21 @@ func (s *BingoWinnerStore) GetByBoardID(boardID int) ([]models.BingoWinner, erro
 	return winners, nil
 }
 
+func (s *BingoWinnerStore) DeleteByUserID(userID int) error {
+	rows, err := readAllRows(s.filePath)
+	if err != nil {
+		return err
+	}
+	var kept [][]string
+	for _, row := range rows {
+		uid, _ := strconv.Atoi(row[1])
+		if uid != userID {
+			kept = append(kept, row)
+		}
+	}
+	return writeAllRows(s.filePath, bingoWinnerHeader, kept)
+}
+
 func (s *BingoWinnerStore) Create(w *models.BingoWinner) error {
 	id, err := nextID(s.filePath)
 	if err != nil {

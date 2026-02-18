@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Trophy, GripVertical, Check } from "lucide-react";
+import { Loader2, Trophy, Check } from "lucide-react";
 
 function getWinningPositions(winners: BingoWinner[]): Set<number> {
   const lines: Record<string, number[]> = {

@@ -82,6 +82,45 @@ function EventCardSkeleton() {
   );
 }
 
+function ResolvedCarousel({ events }: { events: Event[] }) {
+  const resolved = events
+    .filter((e) => e.status === "resolved")
+    .sort((a, b) => (b.resolved_at ?? "").localeCompare(a.resolved_at ?? ""))
+    .slice(0, 5);
+
+  if (resolved.length === 0) return null;
+
+  const items = resolved.length >= 2 ? [...resolved, ...resolved] : resolved;
+  const shouldAnimate = resolved.length >= 2;
+
+  return (
+    <div className="relative -mx-4 px-4 overflow-hidden">
+      <div
+        className={`flex gap-3 w-max ${shouldAnimate ? "animate-marquee hover:[animation-play-state:paused]" : ""}`}
+      >
+        {items.map((event, i) => {
+          const winner = event.odds.find(
+            (o) => o.outcome_id === event.winning_outcome_id
+          );
+          return (
+            <Link key={`${event.id}-${i}`} to={`/events/${event.id}`} className="shrink-0 w-[200px]">
+              <div className="rounded-lg border bg-card px-3 py-2.5 hover:bg-accent/50 transition-colors h-full">
+                <p className="text-xs font-medium leading-snug line-clamp-2">{event.title}</p>
+                {winner && (
+                  <div className="mt-1.5 flex items-center gap-1">
+                    <CheckCircle2 className={`h-3 w-3 shrink-0 ${winner.label === "No" ? "text-red-600" : "text-green-600"}`} />
+                    <span className={`text-[11px] font-medium truncate ${winner.label === "No" ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>{winner.label}</span>
+                  </div>
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +167,11 @@ export default function EventsPage() {
     <div className="animate-in fade-in duration-300 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Markets</h1>
+        <h2 className="text-xl font-medium justify-left text-muted-foreground">Recent Events</h2>
       </div>
+
+      {/* Recent results carousel */}
+      <ResolvedCarousel events={events} />
 
       <Tabs
         value={filter}
@@ -185,7 +228,25 @@ export default function EventsPage() {
                     )}
                   </CardHeader>
                   <CardContent>
-                    <OddsBar odds={event.odds} />
+                    {event.status === "resolved" && event.winning_outcome_id ? (
+                      <div className="flex items-center gap-1.5">
+                        {(() => {
+                          const winner = event.odds.find((o) => o.outcome_id === event.winning_outcome_id);
+                          if (!winner) return null;
+                          const isNo = winner.label === "No";
+                          return (
+                            <>
+                              <CheckCircle2 className={`h-4 w-4 shrink-0 ${isNo ? "text-red-600" : "text-green-600"}`} />
+                              <span className={`text-sm font-medium ${isNo ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>
+                                {winner.label}
+                              </span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <OddsBar odds={event.odds} />
+                    )}
                   </CardContent>
                 </Card>
               </Link>

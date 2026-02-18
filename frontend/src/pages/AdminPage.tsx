@@ -3,12 +3,17 @@ import type { Event, BingoEvent } from "@/lib/types";
 import {
   getEvents,
   createEvent,
+  updateEvent,
+  deleteEvent,
   resolveEvent,
   getBingoEvents,
   createBingoEvent,
+  updateBingoEvent,
   resolveBingoEvent,
   getAdminUsers,
   setUserBingo,
+  setUserBalance,
+  resetUserBingo,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +43,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { Plus, X, CheckCircle2, Loader2, Grid3X3, Users } from "lucide-react";
+import { Plus, X, CheckCircle2, Loader2, Grid3X3, Users, Pencil, Trash2 } from "lucide-react";
 
 export default function AdminPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -59,7 +64,7 @@ export default function AdminPage() {
   const [resolveLoading, setResolveLoading] = useState(false);
 
   // Users
-  const [users, setUsers] = useState<{ id: number; username: string; is_admin: boolean; bingo: boolean }[]>([]);
+  const [users, setUsers] = useState<{ id: number; username: string; is_admin: boolean; bingo: boolean; balance: number }[]>([]);
 
   // Bingo
   const [bingoEvents, setBingoEvents] = useState<BingoEvent[]>([]);
@@ -67,6 +72,21 @@ export default function AdminPage() {
   const [bingoRarity, setBingoRarity] = useState("common");
   const [bingoCreateOpen, setBingoCreateOpen] = useState(false);
   const [bingoCreateLoading, setBingoCreateLoading] = useState(false);
+
+  // Edit event
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Event | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editOutcomes, setEditOutcomes] = useState<{ id?: number; label: string }[]>([]);
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Edit bingo event
+  const [editBingoOpen, setEditBingoOpen] = useState(false);
+  const [editBingoTarget, setEditBingoTarget] = useState<BingoEvent | null>(null);
+  const [editBingoTitle, setEditBingoTitle] = useState("");
+  const [editBingoRarity, setEditBingoRarity] = useState("common");
+  const [editBingoLoading, setEditBingoLoading] = useState(false);
 
   const fetchEvents = () => {
     getEvents()
@@ -138,6 +158,62 @@ export default function AdminPage() {
       setOutcomes(["Yes", "No"]);
     } else {
       setOutcomes(["", "", ""]);
+    }
+  };
+
+  const openEditEvent = (event: Event) => {
+    setEditTarget(event);
+    setEditTitle(event.title);
+    setEditDescription(event.description ?? "");
+    setEditOutcomes(event.odds.map((o) => ({ id: o.outcome_id, label: o.label })));
+    setEditOpen(true);
+  };
+
+  const handleEditEvent = async () => {
+    if (!editTarget || !editTitle.trim()) return;
+    if (editOutcomes.some((o) => !o.label.trim())) {
+      toast.error("All outcomes must have labels");
+      return;
+    }
+    setEditLoading(true);
+    try {
+      await updateEvent(editTarget.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        outcomes: editOutcomes.map((o) => ({ id: o.id, label: o.label.trim() })),
+      });
+      toast.success("Event updated");
+      setEditOpen(false);
+      fetchEvents();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const openEditBingo = (be: BingoEvent) => {
+    setEditBingoTarget(be);
+    setEditBingoTitle(be.title);
+    setEditBingoRarity(be.rarity);
+    setEditBingoOpen(true);
+  };
+
+  const handleEditBingo = async () => {
+    if (!editBingoTarget || !editBingoTitle.trim()) return;
+    setEditBingoLoading(true);
+    try {
+      await updateBingoEvent(editBingoTarget.id, {
+        title: editBingoTitle.trim(),
+        rarity: editBingoRarity,
+      });
+      toast.success("Bingo event updated");
+      setEditBingoOpen(false);
+      fetchBingoEvents();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update");
+    } finally {
+      setEditBingoLoading(false);
     }
   };
 
@@ -280,19 +356,46 @@ export default function AdminPage() {
                       {event.odds.map((o) => o.label).join(" / ")}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1"
-                    onClick={() => {
-                      setResolveTarget(event);
-                      setWinnerOutcomeId("");
-                      setResolveOpen(true);
-                    }}
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Resolve
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => openEditEvent(event)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={async () => {
+                        if (!confirm(`Delete "${event.title}"? Any open positions will be refunded.`)) return;
+                        try {
+                          await deleteEvent(event.id);
+                          toast.success("Event deleted");
+                          fetchEvents();
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Failed to delete");
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => {
+                        setResolveTarget(event);
+                        setWinnerOutcomeId("");
+                        setResolveOpen(true);
+                      }}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Resolve
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -319,7 +422,34 @@ export default function AdminPage() {
                       {event.odds.map((o) => o.label).join(" / ")}
                     </div>
                   </div>
-                  <Badge variant="secondary">{event.status}</Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => openEditEvent(event)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={async () => {
+                        if (!confirm(`Delete "${event.title}"?`)) return;
+                        try {
+                          await deleteEvent(event.id);
+                          toast.success("Event deleted");
+                          fetchEvents();
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Failed to delete");
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Badge variant="secondary">{event.status}</Badge>
+                  </div>
                 </div>
               ))}
             </div>
@@ -327,15 +457,15 @@ export default function AdminPage() {
         </Card>
       )}
 
-      {/* User Permissions */}
+      {/* User Management */}
       <Card>
         <CardHeader>
           <div>
             <CardTitle className="text-base flex items-center gap-1.5">
               <Users className="h-4 w-4" />
-              User Permissions
+              User Management
             </CardTitle>
-            <CardDescription>Toggle bingo access for users</CardDescription>
+            <CardDescription>Manage user permissions, points, and bingo boards</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -344,37 +474,82 @@ export default function AdminPage() {
               No users
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {users.map((u) => (
                 <div
                   key={u.id}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2.5"
+                  className="rounded-lg border px-3 py-2.5 space-y-2"
                 >
-                  <div className="font-medium">
-                    {u.username}
-                    {u.is_admin && (
-                      <Badge variant="secondary" className="ml-2">admin</Badge>
-                    )}
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">
+                      {u.username}
+                      {u.is_admin && (
+                        <Badge variant="secondary" className="ml-2">admin</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Bingo</span>
+                      <Switch
+                        checked={u.bingo}
+                        onCheckedChange={async (checked) => {
+                          try {
+                            await setUserBingo(u.id, checked);
+                            setUsers((prev) =>
+                              prev.map((x) =>
+                                x.id === u.id ? { ...x, bingo: checked } : x
+                              )
+                            );
+                          } catch (err) {
+                            toast.error(
+                              err instanceof Error ? err.message : "Failed to update"
+                            );
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Bingo</span>
-                    <Switch
-                      checked={u.bingo}
-                      onCheckedChange={async (checked) => {
+                    <span className="text-xs text-muted-foreground">Points:</span>
+                    <Input
+                      type="number"
+                      className="h-7 w-24 text-xs"
+                      defaultValue={u.balance}
+                      onBlur={async (e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (isNaN(val) || val === u.balance) return;
                         try {
-                          await setUserBingo(u.id, checked);
+                          await setUserBalance(u.id, val);
                           setUsers((prev) =>
                             prev.map((x) =>
-                              x.id === u.id ? { ...x, bingo: checked } : x
+                              x.id === u.id ? { ...x, balance: val } : x
                             )
                           );
+                          toast.success(`${u.username} balance set to ${val}`);
                         } catch (err) {
-                          toast.error(
-                            err instanceof Error ? err.message : "Failed to update"
-                          );
+                          toast.error(err instanceof Error ? err.message : "Failed to update");
+                          e.target.value = String(u.balance);
                         }
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      }}
                     />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={async () => {
+                        if (!confirm(`Reset ${u.username}'s bingo board?`)) return;
+                        try {
+                          await resetUserBingo(u.id);
+                          toast.success(`${u.username}'s bingo board reset`);
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Failed to reset");
+                        }
+                      }}
+                    >
+                      Reset Bingo
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -478,6 +653,15 @@ export default function AdminPage() {
                       {be.rarity}
                     </Badge>
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => openEditBingo(be)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                   {be.resolved ? (
                     <Badge variant="secondary">Resolved</Badge>
                   ) : (
@@ -503,12 +687,130 @@ export default function AdminPage() {
                       Resolve
                     </Button>
                   )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Event Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+            <DialogDescription>
+              Update event details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Outcomes</Label>
+              <div className="space-y-2">
+                {editOutcomes.map((o, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input
+                      value={o.label}
+                      onChange={(e) => {
+                        const next = [...editOutcomes];
+                        next[i] = { ...next[i], label: e.target.value };
+                        setEditOutcomes(next);
+                      }}
+                    />
+                    {editOutcomes.length > 2 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditOutcomes(editOutcomes.filter((_, j) => j !== i))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditOutcomes([...editOutcomes, { label: "" }])}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Add Outcome
+                </Button>
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleEditEvent}
+              disabled={editLoading}
+            >
+              {editLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Bingo Event Dialog */}
+      <Dialog open={editBingoOpen} onOpenChange={setEditBingoOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Bingo Event</DialogTitle>
+            <DialogDescription>
+              Update bingo event details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                value={editBingoTitle}
+                onChange={(e) => setEditBingoTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rarity</Label>
+              <Select value={editBingoRarity} onValueChange={setEditBingoRarity}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="common">Common</SelectItem>
+                  <SelectItem value="uncommon">Uncommon</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleEditBingo}
+              disabled={editBingoLoading}
+            >
+              {editBingoLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Resolve Dialog */}
       <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>

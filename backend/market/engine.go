@@ -204,25 +204,15 @@ func (e *Engine) Sell(userID, eventID, outcomeID int, sharesToSell float64) (int
 		return 0, fmt.Errorf("insufficient shares")
 	}
 
-	// Calculate current market value
-	odds, err := e.GetOdds(eventID)
-	if err != nil {
-		return 0, err
-	}
-	var currentPrice float64
-	for _, o := range odds {
-		if o.OutcomeID == outcomeID {
-			currentPrice = o.Odds / 100
-			break
-		}
-	}
-
-	pointsBack := int(math.Floor(sharesToSell * currentPrice))
+	// Seller gets 50% of share value back; the rest stays in the prize pool
+	fullValue := int(math.Floor(sharesToSell))
+	pointsBack := fullValue / 2
 	if pointsBack < 1 && sharesToSell > 0 {
-		pointsBack = 1 // minimum 1 point back
+		pointsBack = 1
 	}
 
-	// Update position
+	// Remove shares from user's position but keep them in the pool
+	// by not deleting from total shares — leave orphan shares so pool stays large
 	pos.Shares -= sharesToSell
 	if pos.Shares < 0.001 {
 		if err := e.Store.Positions.Delete(pos.ID); err != nil {
@@ -234,7 +224,7 @@ func (e *Engine) Sell(userID, eventID, outcomeID int, sharesToSell float64) (int
 		}
 	}
 
-	// Credit user
+	// Credit user with 50%
 	user, err := e.Store.Users.GetByID(userID)
 	if err != nil {
 		return 0, err

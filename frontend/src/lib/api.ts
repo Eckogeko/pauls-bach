@@ -83,6 +83,17 @@ export const createEvent = (title: string, description: string, eventType: strin
     body: JSON.stringify({ title, description, event_type: eventType, outcomes }),
   });
 
+export const updateEvent = (eventId: number, data: { title: string; description: string; outcomes: { id?: number; label: string }[] }) =>
+  api<{ message: string }>(`/api/admin/events/${eventId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteEvent = (eventId: number) =>
+  api<{ message: string }>(`/api/admin/events/${eventId}`, {
+    method: "DELETE",
+  });
+
 export const resolveEvent = (eventId: number, winningOutcomeId: number) =>
   api<{ message: string }>(`/api/admin/events/${eventId}/resolve`, {
     method: "POST",
@@ -99,12 +110,23 @@ export const getHistory = (userId: number) =>
 
 // Admin - Users
 export const getAdminUsers = () =>
-  api<{ id: number; username: string; is_admin: boolean; bingo: boolean }[]>("/api/admin/users");
+  api<{ id: number; username: string; is_admin: boolean; bingo: boolean; balance: number }[]>("/api/admin/users");
 
 export const setUserBingo = (userId: number, bingo: boolean) =>
   api<{ message: string; bingo: boolean }>(`/api/admin/users/${userId}/bingo`, {
     method: "POST",
     body: JSON.stringify({ bingo }),
+  });
+
+export const setUserBalance = (userId: number, balance: number) =>
+  api<{ message: string; balance: number }>(`/api/admin/users/${userId}/balance`, {
+    method: "POST",
+    body: JSON.stringify({ balance }),
+  });
+
+export const resetUserBingo = (userId: number) =>
+  api<{ message: string }>(`/api/admin/users/${userId}/reset-bingo`, {
+    method: "POST",
   });
 
 // Bingo
@@ -131,6 +153,12 @@ export const createBingoEvent = (title: string, rarity: string = "common") =>
   api<import("./types").BingoEvent>("/api/admin/bingo/events", {
     method: "POST",
     body: JSON.stringify({ title, rarity }),
+  });
+
+export const updateBingoEvent = (eventId: number, data: { title: string; rarity: string }) =>
+  api<import("./types").BingoEvent>(`/api/admin/bingo/events/${eventId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 
 export const resolveBingoEvent = (eventId: number) =>

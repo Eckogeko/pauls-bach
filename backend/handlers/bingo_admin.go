@@ -52,6 +52,54 @@ func (h *BingoAdminHandler) CreateBingoEvent(w http.ResponseWriter, r *http.Requ
 	jsonResp(w, event, http.StatusCreated)
 }
 
+func (h *BingoAdminHandler) UpdateBingoEvent(w http.ResponseWriter, r *http.Request) {
+	eventID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		jsonError(w, "invalid event id", http.StatusBadRequest)
+		return
+	}
+
+	var req createBingoEventRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.Title == "" {
+		jsonError(w, "title is required", http.StatusBadRequest)
+		return
+	}
+	if req.Rarity == "" {
+		req.Rarity = "common"
+	}
+	if req.Rarity != "common" && req.Rarity != "uncommon" {
+		jsonError(w, "rarity must be 'common' or 'uncommon'", http.StatusBadRequest)
+		return
+	}
+
+	store.WriteLock()
+	defer store.WriteUnlock()
+
+	event, err := h.Store.BingoEvents.GetByID(eventID)
+	if err != nil {
+		jsonError(w, "bingo event not found", http.StatusNotFound)
+		return
+	}
+
+	event.Title = req.Title
+	event.Rarity = req.Rarity
+	if err := h.Store.BingoEvents.Update(event); err != nil {
+		jsonError(w, "failed to update bingo event", http.StatusInternalServerError)
+		return
+	}
+
+	h.Broker.Broadcast(sse.EventBingoResolved, map[string]interface{}{
+		"bingo_event_id": eventID,
+		"title":          event.Title,
+	})
+
+	jsonResp(w, event, http.StatusOK)
+}
+
 func (h *BingoAdminHandler) ResolveBingoEvent(w http.ResponseWriter, r *http.Request) {
 	eventID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {

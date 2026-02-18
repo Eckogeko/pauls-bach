@@ -57,6 +57,23 @@ func (s *TransactionStore) GetByUserID(userID int) ([]models.Transaction, error)
 	return txs, nil
 }
 
+var transactionHeader = []string{"id", "user_id", "event_id", "outcome_id", "tx_type", "shares", "points", "created_at"}
+
+func (s *TransactionStore) DeleteByEventID(eventID int) error {
+	rows, err := readAllRows(s.filePath)
+	if err != nil {
+		return err
+	}
+	var kept [][]string
+	for _, row := range rows {
+		eid, _ := strconv.Atoi(row[2])
+		if eid != eventID {
+			kept = append(kept, row)
+		}
+	}
+	return writeAllRows(s.filePath, transactionHeader, kept)
+}
+
 func (s *TransactionStore) Create(t *models.Transaction) error {
 	id, err := nextID(s.filePath)
 	if err != nil {

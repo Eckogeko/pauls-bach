@@ -302,6 +302,12 @@ export default function EventDetailPage() {
                   </Button>
                 </div>
 
+                {tradeMode === "sell" && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Selling returns 50% of share value. The rest stays in the prize pool.
+                  </p>
+                )}
+
                 <div className="space-y-2">
                   <Label>
                     {tradeMode === "buy" ? "Points to spend" : "Shares to sell"}

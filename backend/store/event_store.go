@@ -99,3 +99,18 @@ func (s *EventStore) Update(e *models.Event) error {
 	}
 	return fmt.Errorf("event not found")
 }
+
+func (s *EventStore) Delete(id int) error {
+	rows, err := readAllRows(s.filePath)
+	if err != nil {
+		return err
+	}
+	var kept [][]string
+	for _, row := range rows {
+		rowID, _ := strconv.Atoi(row[0])
+		if rowID != id {
+			kept = append(kept, row)
+		}
+	}
+	return writeAllRows(s.filePath, eventHeader, kept)
+}

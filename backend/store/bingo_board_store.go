@@ -107,3 +107,18 @@ func (s *BingoBoardStore) Update(b *models.BingoBoard) error {
 	}
 	return fmt.Errorf("bingo board not found")
 }
+
+func (s *BingoBoardStore) DeleteByUserID(userID int) error {
+	rows, err := readAllRows(s.filePath)
+	if err != nil {
+		return err
+	}
+	var kept [][]string
+	for _, row := range rows {
+		uid, _ := strconv.Atoi(row[1])
+		if uid != userID {
+			kept = append(kept, row)
+		}
+	}
+	return writeAllRows(s.filePath, bingoBoardHeader, kept)
+}
