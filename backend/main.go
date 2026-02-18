@@ -67,11 +67,14 @@ func main() {
 			r.Get("/bingo/board", bingoH.GetBoard)
 			r.Post("/bingo/board", bingoH.CreateBoard)
 			r.Get("/bingo/winners", bingoH.ListWinners)
+			r.Get("/bingo/boards", bingoH.ListBoards)
 		})
 
 		r.Group(func(r chi.Router) {
 			r.Use(mw.Auth(cfg.JWTSecret))
 			r.Use(mw.AdminOnly)
+			r.Get("/admin/users", adminH.ListUsers)
+			r.Post("/admin/users/{id}/bingo", adminH.SetBingo)
 			r.Post("/admin/events", adminH.CreateEvent)
 			r.Post("/admin/events/{id}/resolve", adminH.ResolveEvent)
 			r.Post("/admin/bingo/events", bingoAdminH.CreateBingoEvent)

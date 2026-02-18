@@ -97,6 +97,69 @@ func (h *AdminHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	}, http.StatusCreated)
 }
 
+func (h *AdminHandler) SetBingo(w http.ResponseWriter, r *http.Request) {
+	userID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		jsonError(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Bingo bool `json:"bingo"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	store.WriteLock()
+	defer store.WriteUnlock()
+
+	user, err := h.Store.Users.GetByID(userID)
+	if err != nil {
+		jsonError(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	user.Bingo = req.Bingo
+	if err := h.Store.Users.Update(user); err != nil {
+		jsonError(w, "failed to update user", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResp(w, map[string]interface{}{"message": "updated", "bingo": user.Bingo}, http.StatusOK)
+}
+
+func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	store.ReadLock()
+	defer store.ReadUnlock()
+
+	users, err := h.Store.Users.GetAll()
+	if err != nil {
+		jsonError(w, "failed to load users", http.StatusInternalServerError)
+		return
+	}
+
+	type userInfo struct {
+		ID       int    `json:"id"`
+		Username string `json:"username"`
+		IsAdmin  bool   `json:"is_admin"`
+		Bingo    bool   `json:"bingo"`
+	}
+
+	result := make([]userInfo, 0, len(users))
+	for _, u := range users {
+		result = append(result, userInfo{
+			ID:       u.ID,
+			Username: u.Username,
+			IsAdmin:  u.IsAdmin,
+			Bingo:    u.Bingo,
+		})
+	}
+
+	jsonResp(w, result, http.StatusOK)
+}
+
 func (h *AdminHandler) ResolveEvent(w http.ResponseWriter, r *http.Request) {
 	eventID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {

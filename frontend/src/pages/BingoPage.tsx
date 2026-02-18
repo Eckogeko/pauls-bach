@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { BingoEvent, BingoBoard as BingoBoardType, BingoSquare, BingoWinner } from "@/lib/types";
-import { getBingoEvents, getBingoBoard, createBingoBoard, getBingoWinners } from "@/lib/api";
+import { getBingoEvents, getBingoBoard, createBingoBoard, getBingoWinners, getAllBingoBoards } from "@/lib/api";
 import { useEventStream } from "@/hooks/useEventStream";
 import BingoBoard from "@/components/BingoBoard";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export default function BingoPage() {
   const [board, setBoard] = useState<BingoBoardType | null>(null);
   const [boardWinners, setBoardWinners] = useState<BingoWinner[]>([]);
   const [allWinners, setAllWinners] = useState<BingoWinner[]>([]);
+  const [allBoards, setAllBoards] = useState<(BingoBoardType & { username: string; winners: BingoWinner[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [hasBoard, setHasBoard] = useState(false);
@@ -61,6 +62,14 @@ export default function BingoPage() {
         setBoard(res.board);
         setBoardWinners(res.winners ?? []);
         setHasBoard(true);
+
+        // Fetch all boards once user has their own
+        try {
+          const boards = await getAllBingoBoards();
+          setAllBoards(boards);
+        } catch {
+          // ignore
+        }
       } catch {
         setHasBoard(false);
       }
@@ -236,10 +245,10 @@ export default function BingoPage() {
                             e.dataTransfer.setData("text/plain", String(ev.id));
                             e.dataTransfer.effectAllowed = "move";
                           }}
-                          className="flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing hover:bg-accent transition-colors select-none"
+                          className="flex items-start gap-1.5 rounded-md border px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing hover:bg-accent transition-colors select-none"
                         >
-                          <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
-                          <span className="truncate">{ev.title}</span>
+                          <GripVertical className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                          <span>{ev.title}</span>
                         </div>
                       ))}
                       {availableEvents.length === 0 && (
@@ -275,6 +284,37 @@ export default function BingoPage() {
                 </Button>
               </>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {hasBoard && allBoards.filter((b) => b.user_id !== board?.user_id).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Other Boards</CardTitle>
+            <CardDescription>See how other players set up their boards.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {allBoards
+              .filter((b) => b.user_id !== board?.user_id)
+              .map((b) => (
+                <div key={b.id} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{b.username}</span>
+                    {b.winners && b.winners.length > 0 && (
+                      <Badge variant="secondary" className="gap-1">
+                        <Trophy className="h-3 w-3" /> BINGO
+                      </Badge>
+                    )}
+                  </div>
+                  <BingoBoard
+                    mode="view"
+                    squares={b.squares}
+                    bingoEvents={bingoEvents}
+                    winningPositions={getWinningPositions(b.winners ?? [])}
+                  />
+                </div>
+              ))}
           </CardContent>
         </Card>
       )}

@@ -7,6 +7,8 @@ import {
   getBingoEvents,
   createBingoEvent,
   resolveBingoEvent,
+  getAdminUsers,
+  setUserBingo,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +37,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, X, CheckCircle2, Loader2, Grid3X3 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, X, CheckCircle2, Loader2, Grid3X3, Users } from "lucide-react";
 
 export default function AdminPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -55,6 +58,9 @@ export default function AdminPage() {
   const [winnerOutcomeId, setWinnerOutcomeId] = useState<string>("");
   const [resolveLoading, setResolveLoading] = useState(false);
 
+  // Users
+  const [users, setUsers] = useState<{ id: number; username: string; is_admin: boolean; bingo: boolean }[]>([]);
+
   // Bingo
   const [bingoEvents, setBingoEvents] = useState<BingoEvent[]>([]);
   const [bingoTitle, setBingoTitle] = useState("");
@@ -72,9 +78,14 @@ export default function AdminPage() {
     getBingoEvents().then(setBingoEvents).catch(() => {});
   };
 
+  const fetchUsers = () => {
+    getAdminUsers().then(setUsers).catch(() => {});
+  };
+
   useEffect(() => {
     fetchEvents();
     fetchBingoEvents();
+    fetchUsers();
   }, []);
 
   const handleCreate = async () => {
@@ -314,6 +325,62 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* User Permissions */}
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle className="text-base flex items-center gap-1.5">
+              <Users className="h-4 w-4" />
+              User Permissions
+            </CardTitle>
+            <CardDescription>Toggle bingo access for users</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {users.length === 0 ? (
+            <div className="py-6 text-center text-muted-foreground">
+              No users
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {users.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2.5"
+                >
+                  <div className="font-medium">
+                    {u.username}
+                    {u.is_admin && (
+                      <Badge variant="secondary" className="ml-2">admin</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Bingo</span>
+                    <Switch
+                      checked={u.bingo}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await setUserBingo(u.id, checked);
+                          setUsers((prev) =>
+                            prev.map((x) =>
+                              x.id === u.id ? { ...x, bingo: checked } : x
+                            )
+                          );
+                        } catch (err) {
+                          toast.error(
+                            err instanceof Error ? err.message : "Failed to update"
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Bingo Events */}
       <Card>

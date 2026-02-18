@@ -145,6 +145,40 @@ func (h *BingoHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, board, http.StatusCreated)
 }
 
+// ListBoards returns all bingo boards with usernames.
+func (h *BingoHandler) ListBoards(w http.ResponseWriter, r *http.Request) {
+	store.ReadLock()
+	defer store.ReadUnlock()
+
+	boards, err := h.Store.BingoBoards.GetAll()
+	if err != nil {
+		jsonError(w, "failed to load boards", http.StatusInternalServerError)
+		return
+	}
+
+	type boardWithUser struct {
+		models.BingoBoard
+		Username string              `json:"username"`
+		Winners  []models.BingoWinner `json:"winners"`
+	}
+
+	result := make([]boardWithUser, 0, len(boards))
+	for _, b := range boards {
+		username := "unknown"
+		if user, err := h.Store.Users.GetByID(b.UserID); err == nil {
+			username = user.Username
+		}
+		winners, _ := h.Store.BingoWinners.GetByBoardID(b.ID)
+		result = append(result, boardWithUser{
+			BingoBoard: b,
+			Username:   username,
+			Winners:    winners,
+		})
+	}
+
+	jsonResp(w, result, http.StatusOK)
+}
+
 // ListWinners returns all bingo winners.
 func (h *BingoHandler) ListWinners(w http.ResponseWriter, r *http.Request) {
 	store.ReadLock()

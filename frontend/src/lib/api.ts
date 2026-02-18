@@ -97,6 +97,16 @@ export const getLeaderboard = () =>
 export const getHistory = (userId: number) =>
   api<import("./types").HistoryEntry[]>(`/api/users/${userId}/history`);
 
+// Admin - Users
+export const getAdminUsers = () =>
+  api<{ id: number; username: string; is_admin: boolean; bingo: boolean }[]>("/api/admin/users");
+
+export const setUserBingo = (userId: number, bingo: boolean) =>
+  api<{ message: string; bingo: boolean }>(`/api/admin/users/${userId}/bingo`, {
+    method: "POST",
+    body: JSON.stringify({ bingo }),
+  });
+
 // Bingo
 export const getBingoEvents = () =>
   api<import("./types").BingoEvent[]>("/api/bingo/events");
@@ -112,6 +122,9 @@ export const createBingoBoard = (squares: import("./types").BingoSquare[]) =>
 
 export const getBingoWinners = () =>
   api<import("./types").BingoWinner[]>("/api/bingo/winners");
+
+export const getAllBingoBoards = () =>
+  api<(import("./types").BingoBoard & { username: string; winners: import("./types").BingoWinner[] })[]>("/api/bingo/boards");
 
 // Bingo Admin
 export const createBingoEvent = (title: string) =>
