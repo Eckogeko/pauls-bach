@@ -123,6 +123,20 @@ export default function BingoPage() {
   }
 
   const availableEvents = bingoEvents.filter((ev) => !usedEventIds.has(ev.id));
+  const availableCommon = availableEvents.filter((ev) => ev.rarity !== "uncommon");
+  const availableUncommon = availableEvents.filter((ev) => ev.rarity === "uncommon");
+
+  // Count placed uncommon events
+  const placedUncommonCount = (() => {
+    let count = 0;
+    for (const [, sq] of buildSquares) {
+      if (sq.bingo_event_id) {
+        const ev = bingoEvents.find((e) => e.id === sq.bingo_event_id);
+        if (ev?.rarity === "uncommon") count++;
+      }
+    }
+    return count;
+  })();
 
   const handleSubmit = async () => {
     const squares: BingoSquare[] = [];
@@ -149,6 +163,19 @@ export default function BingoPage() {
           resolved: false,
         });
       }
+    }
+
+    // Validate uncommon count
+    let uncommonCount = 0;
+    for (const sq of squares) {
+      if (sq.bingo_event_id) {
+        const ev = bingoEvents.find((e) => e.id === sq.bingo_event_id);
+        if (ev?.rarity === "uncommon") uncommonCount++;
+      }
+    }
+    if (uncommonCount !== 5) {
+      toast.error(`Board must include exactly 5 uncommon events (currently ${uncommonCount})`);
+      return;
     }
 
     setSubmitting(true);
@@ -232,25 +259,53 @@ export default function BingoPage() {
               <>
                 <div className="flex gap-4 flex-col md:flex-row">
                   {/* Sidebar: draggable event list */}
-                  <div className="md:w-48 shrink-0 space-y-1.5">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">
-                      Events ({availableEvents.length} remaining)
+                  <div className="md:w-48 shrink-0 space-y-3">
+                    <div className={`text-xs font-medium px-1 ${placedUncommonCount === 5 ? "text-green-600" : "text-amber-600"}`}>
+                      Uncommon: {placedUncommonCount}/5 placed
                     </div>
-                    <div className="max-h-[420px] overflow-y-auto space-y-1 pr-1">
-                      {availableEvents.map((ev) => (
-                        <div
-                          key={ev.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData("text/plain", String(ev.id));
-                            e.dataTransfer.effectAllowed = "move";
-                          }}
-                          className="flex items-start gap-1.5 rounded-md border px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing hover:bg-accent transition-colors select-none"
-                        >
-                          <GripVertical className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-                          <span>{ev.title}</span>
+                    <div className="max-h-[420px] overflow-y-auto space-y-3 pr-1">
+                      {availableUncommon.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                            Uncommon ({availableUncommon.length})
+                          </div>
+                          {availableUncommon.map((ev) => (
+                            <div
+                              key={ev.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData("text/plain", String(ev.id));
+                                e.dataTransfer.effectAllowed = "move";
+                              }}
+                              className="flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing hover:bg-amber-500/10 transition-colors select-none"
+                            >
+                              <GripVertical className="h-3 w-3 text-amber-600 shrink-0 mt-0.5" />
+                              <span>{ev.title}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
+                      {availableCommon.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                            Common ({availableCommon.length})
+                          </div>
+                          {availableCommon.map((ev) => (
+                            <div
+                              key={ev.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData("text/plain", String(ev.id));
+                                e.dataTransfer.effectAllowed = "move";
+                              }}
+                              className="flex items-start gap-1.5 rounded-md border px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing hover:bg-accent transition-colors select-none"
+                            >
+                              <GripVertical className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                              <span>{ev.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {availableEvents.length === 0 && (
                         <p className="text-[11px] text-muted-foreground/60 text-center py-2">
                           All events placed!

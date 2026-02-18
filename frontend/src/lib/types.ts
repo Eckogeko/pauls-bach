@@ -68,6 +68,7 @@ export interface HistoryEntry {
 export interface BingoEvent {
   id: number;
   title: string;
+  rarity: "common" | "uncommon";
   resolved: boolean;
   created_at: string;
 }

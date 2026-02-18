@@ -123,6 +123,21 @@ func (h *BingoHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Validate exactly 5 uncommon events
+	uncommonCount := 0
+	for _, sq := range req.Squares {
+		if sq.BingoEventID != 0 {
+			ev, _ := h.Store.BingoEvents.GetByID(sq.BingoEventID)
+			if ev != nil && ev.Rarity == "uncommon" {
+				uncommonCount++
+			}
+		}
+	}
+	if uncommonCount != 5 {
+		jsonError(w, "board must include exactly 5 uncommon events", http.StatusBadRequest)
+		return
+	}
+
 	// Mark already-resolved events
 	for i, sq := range req.Squares {
 		if sq.BingoEventID != 0 {

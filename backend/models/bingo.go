@@ -3,6 +3,7 @@ package models
 type BingoEvent struct {
 	ID        int    `json:"id"`
 	Title     string `json:"title"`
+	Rarity    string `json:"rarity"`
 	Resolved  bool   `json:"resolved"`
 	CreatedAt string `json:"created_at"`
 }

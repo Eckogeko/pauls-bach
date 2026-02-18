@@ -18,7 +18,8 @@ type BingoAdminHandler struct {
 }
 
 type createBingoEventRequest struct {
-	Title string `json:"title"`
+	Title  string `json:"title"`
+	Rarity string `json:"rarity"`
 }
 
 func (h *BingoAdminHandler) CreateBingoEvent(w http.ResponseWriter, r *http.Request) {
@@ -31,11 +32,18 @@ func (h *BingoAdminHandler) CreateBingoEvent(w http.ResponseWriter, r *http.Requ
 		jsonError(w, "title is required", http.StatusBadRequest)
 		return
 	}
+	if req.Rarity == "" {
+		req.Rarity = "common"
+	}
+	if req.Rarity != "common" && req.Rarity != "uncommon" {
+		jsonError(w, "rarity must be 'common' or 'uncommon'", http.StatusBadRequest)
+		return
+	}
 
 	store.WriteLock()
 	defer store.WriteUnlock()
 
-	event := &models.BingoEvent{Title: req.Title}
+	event := &models.BingoEvent{Title: req.Title, Rarity: req.Rarity}
 	if err := h.Store.BingoEvents.Create(event); err != nil {
 		jsonError(w, "failed to create bingo event", http.StatusInternalServerError)
 		return

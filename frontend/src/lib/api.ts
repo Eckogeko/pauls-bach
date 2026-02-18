@@ -127,10 +127,10 @@ export const getAllBingoBoards = () =>
   api<(import("./types").BingoBoard & { username: string; winners: import("./types").BingoWinner[] })[]>("/api/bingo/boards");
 
 // Bingo Admin
-export const createBingoEvent = (title: string) =>
+export const createBingoEvent = (title: string, rarity: string = "common") =>
   api<import("./types").BingoEvent>("/api/admin/bingo/events", {
     method: "POST",
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, rarity }),
   });
 
 export const resolveBingoEvent = (eventId: number) =>

@@ -11,12 +11,13 @@ type BingoEventStore struct {
 	filePath string
 }
 
-var bingoEventHeader = []string{"id", "title", "resolved", "created_at"}
+var bingoEventHeader = []string{"id", "title", "rarity", "resolved", "created_at"}
 
 func (s *BingoEventStore) toRow(e *models.BingoEvent) []string {
 	return []string{
 		strconv.Itoa(e.ID),
 		e.Title,
+		e.Rarity,
 		strconv.FormatBool(e.Resolved),
 		e.CreatedAt,
 	}
@@ -24,11 +25,22 @@ func (s *BingoEventStore) toRow(e *models.BingoEvent) []string {
 
 func (s *BingoEventStore) fromRow(row []string) (*models.BingoEvent, error) {
 	id, _ := strconv.Atoi(row[0])
+	// Backward compat: old rows without rarity column
+	if len(row) == 4 {
+		return &models.BingoEvent{
+			ID:        id,
+			Title:     row[1],
+			Rarity:    "common",
+			Resolved:  row[2] == "true",
+			CreatedAt: row[3],
+		}, nil
+	}
 	return &models.BingoEvent{
 		ID:        id,
 		Title:     row[1],
-		Resolved:  row[2] == "true",
-		CreatedAt: row[3],
+		Rarity:    row[2],
+		Resolved:  row[3] == "true",
+		CreatedAt: row[4],
 	}, nil
 }
 

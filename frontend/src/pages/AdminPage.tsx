@@ -64,6 +64,7 @@ export default function AdminPage() {
   // Bingo
   const [bingoEvents, setBingoEvents] = useState<BingoEvent[]>([]);
   const [bingoTitle, setBingoTitle] = useState("");
+  const [bingoRarity, setBingoRarity] = useState("common");
   const [bingoCreateOpen, setBingoCreateOpen] = useState(false);
   const [bingoCreateLoading, setBingoCreateLoading] = useState(false);
 
@@ -412,6 +413,18 @@ export default function AdminPage() {
                     onChange={(e) => setBingoTitle(e.target.value)}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Rarity</Label>
+                  <Select value={bingoRarity} onValueChange={setBingoRarity}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="common">Common</SelectItem>
+                      <SelectItem value="uncommon">Uncommon</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button
                   className="w-full"
                   disabled={bingoCreateLoading}
@@ -422,9 +435,10 @@ export default function AdminPage() {
                     }
                     setBingoCreateLoading(true);
                     try {
-                      await createBingoEvent(bingoTitle.trim());
+                      await createBingoEvent(bingoTitle.trim(), bingoRarity);
                       toast.success("Bingo event created");
                       setBingoTitle("");
+                      setBingoRarity("common");
                       setBingoCreateOpen(false);
                       fetchBingoEvents();
                     } catch (err) {
@@ -458,7 +472,12 @@ export default function AdminPage() {
                   key={be.id}
                   className="flex items-center justify-between rounded-lg border px-3 py-2.5"
                 >
-                  <div className="font-medium">{be.title}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{be.title}</span>
+                    <Badge variant={be.rarity === "uncommon" ? "default" : "outline"} className="text-[10px] px-1.5 py-0">
+                      {be.rarity}
+                    </Badge>
+                  </div>
                   {be.resolved ? (
                     <Badge variant="secondary">Resolved</Badge>
                   ) : (
