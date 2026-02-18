@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Trophy, GripVertical } from "lucide-react";
+import { Loader2, Trophy, GripVertical, Check } from "lucide-react";
 
 function getWinningPositions(winners: BingoWinner[]): Set<number> {
   const lines: Record<string, number[]> = {
@@ -45,6 +45,7 @@ export default function BingoPage() {
   const [hasBoard, setHasBoard] = useState(false);
 
   const [buildSquares, setBuildSquares] = useState<Map<number, Partial<BingoSquare>>>(() => new Map());
+  const [selectedPosition, setSelectedPosition] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -232,7 +233,7 @@ export default function BingoPage() {
           <CardHeader>
             <CardTitle className="text-base">Build Your Board</CardTitle>
             <CardDescription>
-              Drag events from the list into the grid. Must include at least 5 uncommon events.
+              Tap a square, then pick an event. Must include at least 5 uncommon events.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -242,52 +243,83 @@ export default function BingoPage() {
               </p>
             ) : (
               <>
-                <div className="flex gap-4 flex-col md:flex-row">
-                  {/* Sidebar: draggable event list */}
-                  <div className="md:w-48 shrink-0 space-y-3">
-                    <div className={`text-xs font-medium px-1 ${placedUncommonCount >= 5 ? "text-green-600" : "text-amber-600"}`}>
-                      Uncommon: {placedUncommonCount}/5 placed
+                <div className={`text-xs font-medium ${placedUncommonCount >= 5 ? "text-green-600" : "text-amber-600"}`}>
+                  Uncommon: {placedUncommonCount}/5 placed
+                </div>
+
+                {/* Board grid */}
+                <BingoBoard
+                  mode="build"
+                  squares={builderSquares}
+                  bingoEvents={bingoEvents}
+                  selectedPosition={selectedPosition}
+                  onSquareClick={(pos) => {
+                    const sq = buildSquares.get(pos);
+                    if (sq?.bingo_event_id) {
+                      // Tapping a filled square removes it
+                      handleSquareRemove(pos);
+                      setSelectedPosition(pos);
+                    } else {
+                      // Toggle selection
+                      setSelectedPosition(selectedPosition === pos ? null : pos);
+                    }
+                  }}
+                  onSquareChange={(pos, update) => {
+                    handleSquareChange(pos, update);
+                    setSelectedPosition(null);
+                  }}
+                  onSquareRemove={(pos) => {
+                    handleSquareRemove(pos);
+                    setSelectedPosition(pos);
+                  }}
+                />
+
+                {/* Event picker — shows when a square is selected */}
+                {selectedPosition !== null && (
+                  <div className="rounded-lg border p-3 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      Pick an event for square {selectedPosition + 1}
                     </div>
-                    <div className="max-h-[420px] overflow-y-auto space-y-3 pr-1">
+                    <div className="max-h-[300px] overflow-y-auto space-y-3">
                       {availableUncommon.length > 0 && (
                         <div className="space-y-1">
-                          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                             Uncommon ({availableUncommon.length})
                           </div>
                           {availableUncommon.map((ev) => (
-                            <div
+                            <button
                               key={ev.id}
-                              draggable
-                              onDragStart={(e) => {
-                                e.dataTransfer.setData("text/plain", String(ev.id));
-                                e.dataTransfer.effectAllowed = "move";
+                              type="button"
+                              className="w-full flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs text-left hover:bg-amber-500/15 active:bg-amber-500/20 transition-colors"
+                              onClick={() => {
+                                handleSquareChange(selectedPosition, { bingo_event_id: ev.id });
+                                setSelectedPosition(null);
                               }}
-                              className="flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing hover:bg-amber-500/10 transition-colors select-none"
                             >
-                              <GripVertical className="h-3 w-3 text-amber-600 shrink-0 mt-0.5" />
+                              <Check className="h-3 w-3 text-amber-600 shrink-0 opacity-0" />
                               <span>{ev.title}</span>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
                       {availableCommon.length > 0 && (
                         <div className="space-y-1">
-                          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                             Common ({availableCommon.length})
                           </div>
                           {availableCommon.map((ev) => (
-                            <div
+                            <button
                               key={ev.id}
-                              draggable
-                              onDragStart={(e) => {
-                                e.dataTransfer.setData("text/plain", String(ev.id));
-                                e.dataTransfer.effectAllowed = "move";
+                              type="button"
+                              className="w-full flex items-center gap-2 rounded-md border px-3 py-2 text-xs text-left hover:bg-accent active:bg-accent/80 transition-colors"
+                              onClick={() => {
+                                handleSquareChange(selectedPosition, { bingo_event_id: ev.id });
+                                setSelectedPosition(null);
                               }}
-                              className="flex items-start gap-1.5 rounded-md border px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing hover:bg-accent transition-colors select-none"
                             >
-                              <GripVertical className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                              <Check className="h-3 w-3 text-muted-foreground shrink-0 opacity-0" />
                               <span>{ev.title}</span>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -297,19 +329,15 @@ export default function BingoPage() {
                         </p>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setSelectedPosition(null)}
+                    >
+                      Cancel
+                    </button>
                   </div>
-
-                  {/* Board grid */}
-                  <div className="flex-1">
-                    <BingoBoard
-                      mode="build"
-                      squares={builderSquares}
-                      bingoEvents={bingoEvents}
-                      onSquareChange={handleSquareChange}
-                      onSquareRemove={handleSquareRemove}
-                    />
-                  </div>
-                </div>
+                )}
 
                 <Button
                   className="w-full"

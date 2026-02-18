@@ -107,6 +107,17 @@ func (e *Engine) Buy(userID, eventID, outcomeID, amount int) error {
 		return fmt.Errorf("invalid outcome for this event")
 	}
 
+	// Check if user already has a position on a different outcome for this event
+	existingPositions, err := e.Store.Positions.GetByUserAndEvent(userID, eventID)
+	if err != nil {
+		return err
+	}
+	for _, p := range existingPositions {
+		if p.OutcomeID != outcomeID {
+			return fmt.Errorf("you already bet on a different outcome for this event")
+		}
+	}
+
 	// Calculate current price for avg_price tracking
 	odds, err := e.GetOdds(eventID)
 	if err != nil {

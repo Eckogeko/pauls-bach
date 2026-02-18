@@ -14,6 +14,8 @@ interface BingoBoardBuildProps {
   mode: "build";
   squares: BingoSquare[];
   bingoEvents: BingoEvent[];
+  selectedPosition?: number | null;
+  onSquareClick?: (position: number) => void;
   onSquareChange: (position: number, square: Partial<BingoSquare>) => void;
   onSquareRemove: (position: number) => void;
 }
@@ -50,18 +52,22 @@ export default function BingoBoard(props: BingoBoardProps) {
         if (props.mode === "build") {
           const hasEvent = sq?.bingo_event_id;
           const label = hasEvent ? getSquareLabel(sq!, bingoEvents) : "";
+          const isSelected = props.selectedPosition === i;
 
           return (
             <div
               key={i}
               className={cn(
-                "aspect-square border rounded-md flex items-center justify-center p-1 text-center transition-colors relative",
-                dragOver === i
-                  ? "border-primary bg-primary/10 border-dashed border-2"
-                  : hasEvent
-                    ? "border-primary/30 bg-primary/5"
-                    : "border-border bg-card border-dashed"
+                "aspect-square border rounded-md flex items-center justify-center p-1 text-center transition-colors relative cursor-pointer",
+                isSelected
+                  ? "border-primary bg-primary/15 border-2 ring-2 ring-primary/30"
+                  : dragOver === i
+                    ? "border-primary bg-primary/10 border-dashed border-2"
+                    : hasEvent
+                      ? "border-primary/30 bg-primary/5"
+                      : "border-border bg-card border-dashed"
               )}
+              onClick={() => props.onSquareClick?.(i)}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOver(i);
@@ -88,14 +94,17 @@ export default function BingoBoard(props: BingoBoardProps) {
                   <button
                     type="button"
                     className="absolute top-0.5 right-0.5 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                    onClick={() => props.onSquareRemove(i)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      props.onSquareRemove(i);
+                    }}
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </>
               ) : (
                 <span className="text-[10px] text-muted-foreground/50">
-                  Drop here
+                  {isSelected ? "Pick below" : "Tap"}
                 </span>
               )}
             </div>
