@@ -1,0 +1,14 @@
+# Dependencies
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+
+# Data (CSV files with user data)
+backend/data/
+
+# Go binary
+backend/pauls-bach
+
+# OS files
+.DS_Store
