@@ -79,7 +79,7 @@ func main() {
 			r.Post("/admin/events/{id}/resolve", adminH.ResolveEvent)
 			r.Post("/admin/bingo/events", bingoAdminH.CreateBingoEvent)
 			r.Post("/admin/bingo/events/{id}/resolve", bingoAdminH.ResolveBingoEvent)
-			r.Post("/admin/bingo/boards/{boardID}/squares/{position}/resolve", bingoAdminH.ResolveCustomSquare)
+	
 		})
 	})
 

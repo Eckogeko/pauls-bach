@@ -51,8 +51,6 @@ func (h *BingoHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 	}, http.StatusOK)
 }
 
-var customPositions = map[int]bool{0: true, 4: true, 12: true, 20: true, 24: true}
-
 type createBoardRequest struct {
 	Squares []models.BingoSquare `json:"squares"`
 }
@@ -86,22 +84,15 @@ func (h *BingoHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 		}
 		seen[sq.Position] = true
 
-		if customPositions[sq.Position] {
-			if sq.CustomText == "" {
-				jsonError(w, "custom squares require text", http.StatusBadRequest)
-				return
-			}
-		} else {
-			if sq.BingoEventID == 0 {
-				jsonError(w, "non-custom squares require a bingo event", http.StatusBadRequest)
-				return
-			}
-			if seenEvents[sq.BingoEventID] {
-				jsonError(w, "each event can only be used once per board", http.StatusBadRequest)
-				return
-			}
-			seenEvents[sq.BingoEventID] = true
+		if sq.BingoEventID == 0 {
+			jsonError(w, "all squares require a bingo event", http.StatusBadRequest)
+			return
 		}
+		if seenEvents[sq.BingoEventID] {
+			jsonError(w, "each event can only be used once per board", http.StatusBadRequest)
+			return
+		}
+		seenEvents[sq.BingoEventID] = true
 	}
 
 	store.WriteLock()
@@ -113,39 +104,24 @@ func (h *BingoHandler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate that all referenced bingo events exist
-	for _, sq := range req.Squares {
-		if sq.BingoEventID != 0 {
-			if _, err := h.Store.BingoEvents.GetByID(sq.BingoEventID); err != nil {
-				jsonError(w, "invalid bingo event ID", http.StatusBadRequest)
-				return
-			}
-		}
-	}
-
-	// Validate exactly 5 uncommon events
+	// Validate events exist, count uncommon, mark already-resolved
 	uncommonCount := 0
-	for _, sq := range req.Squares {
-		if sq.BingoEventID != 0 {
-			ev, _ := h.Store.BingoEvents.GetByID(sq.BingoEventID)
-			if ev != nil && ev.Rarity == "uncommon" {
-				uncommonCount++
-			}
-		}
-	}
-	if uncommonCount != 5 {
-		jsonError(w, "board must include exactly 5 uncommon events", http.StatusBadRequest)
-		return
-	}
-
-	// Mark already-resolved events
 	for i, sq := range req.Squares {
-		if sq.BingoEventID != 0 {
-			ev, _ := h.Store.BingoEvents.GetByID(sq.BingoEventID)
-			if ev != nil && ev.Resolved {
-				req.Squares[i].Resolved = true
-			}
+		ev, err := h.Store.BingoEvents.GetByID(sq.BingoEventID)
+		if err != nil {
+			jsonError(w, "invalid bingo event ID", http.StatusBadRequest)
+			return
 		}
+		if ev.Rarity == "uncommon" {
+			uncommonCount++
+		}
+		if ev.Resolved {
+			req.Squares[i].Resolved = true
+		}
+	}
+	if uncommonCount < 5 {
+		jsonError(w, "board must include at least 5 uncommon events", http.StatusBadRequest)
+		return
 	}
 
 	board := &models.BingoBoard{

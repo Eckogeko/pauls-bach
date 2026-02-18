@@ -9,8 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Trophy, GripVertical } from "lucide-react";
 
-const CUSTOM_POSITIONS = new Set([0, 4, 12, 20, 24]);
-
 function getWinningPositions(winners: BingoWinner[]): Set<number> {
   const lines: Record<string, number[]> = {
     "row-0": [0, 1, 2, 3, 4],
@@ -142,27 +140,15 @@ export default function BingoPage() {
     const squares: BingoSquare[] = [];
     for (let i = 0; i < 25; i++) {
       const data = buildSquares.get(i);
-      if (CUSTOM_POSITIONS.has(i)) {
-        if (!data?.custom_text?.trim()) {
-          toast.error(`Custom square at position ${i} needs text`);
-          return;
-        }
-        squares.push({
-          position: i,
-          custom_text: data.custom_text.trim(),
-          resolved: false,
-        });
-      } else {
-        if (!data?.bingo_event_id) {
-          toast.error("All event squares must have an event selected");
-          return;
-        }
-        squares.push({
-          position: i,
-          bingo_event_id: data.bingo_event_id,
-          resolved: false,
-        });
+      if (!data?.bingo_event_id) {
+        toast.error("All squares must have an event selected");
+        return;
       }
+      squares.push({
+        position: i,
+        bingo_event_id: data.bingo_event_id,
+        resolved: false,
+      });
     }
 
     // Validate uncommon count
@@ -173,8 +159,8 @@ export default function BingoPage() {
         if (ev?.rarity === "uncommon") uncommonCount++;
       }
     }
-    if (uncommonCount !== 5) {
-      toast.error(`Board must include exactly 5 uncommon events (currently ${uncommonCount})`);
+    if (uncommonCount < 5) {
+      toast.error(`Board must include at least 5 uncommon events (currently ${uncommonCount})`);
       return;
     }
 
@@ -203,7 +189,6 @@ export default function BingoPage() {
     return {
       position: i,
       bingo_event_id: data?.bingo_event_id,
-      custom_text: data?.custom_text,
       resolved: false,
     };
   });
@@ -229,7 +214,7 @@ export default function BingoPage() {
             <CardHeader>
               <CardTitle className="text-base">Your Board</CardTitle>
               <CardDescription>
-                Resolved squares are highlighted. Corners and center are custom.
+                Resolved squares are highlighted.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -247,7 +232,7 @@ export default function BingoPage() {
           <CardHeader>
             <CardTitle className="text-base">Build Your Board</CardTitle>
             <CardDescription>
-              Drag events from the list into the grid. Corners and center (highlighted) are custom text.
+              Drag events from the list into the grid. Must include at least 5 uncommon events.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -260,7 +245,7 @@ export default function BingoPage() {
                 <div className="flex gap-4 flex-col md:flex-row">
                   {/* Sidebar: draggable event list */}
                   <div className="md:w-48 shrink-0 space-y-3">
-                    <div className={`text-xs font-medium px-1 ${placedUncommonCount === 5 ? "text-green-600" : "text-amber-600"}`}>
+                    <div className={`text-xs font-medium px-1 ${placedUncommonCount >= 5 ? "text-green-600" : "text-amber-600"}`}>
                       Uncommon: {placedUncommonCount}/5 placed
                     </div>
                     <div className="max-h-[420px] overflow-y-auto space-y-3 pr-1">

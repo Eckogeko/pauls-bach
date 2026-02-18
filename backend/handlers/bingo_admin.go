@@ -102,57 +102,6 @@ func (h *BingoAdminHandler) ResolveBingoEvent(w http.ResponseWriter, r *http.Req
 	jsonResp(w, map[string]string{"message": "bingo event resolved"}, http.StatusOK)
 }
 
-func (h *BingoAdminHandler) ResolveCustomSquare(w http.ResponseWriter, r *http.Request) {
-	boardID, err := strconv.Atoi(chi.URLParam(r, "boardID"))
-	if err != nil {
-		jsonError(w, "invalid board id", http.StatusBadRequest)
-		return
-	}
-	position, err := strconv.Atoi(chi.URLParam(r, "position"))
-	if err != nil || position < 0 || position > 24 {
-		jsonError(w, "invalid position", http.StatusBadRequest)
-		return
-	}
-	if !customPositions[position] {
-		jsonError(w, "position is not a custom square", http.StatusBadRequest)
-		return
-	}
-
-	store.WriteLock()
-	defer store.WriteUnlock()
-
-	board, err := h.Store.BingoBoards.GetByID(boardID)
-	if err != nil {
-		jsonError(w, "board not found", http.StatusNotFound)
-		return
-	}
-
-	for i, sq := range board.Squares {
-		if sq.Position == position {
-			if sq.Resolved {
-				jsonError(w, "square already resolved", http.StatusBadRequest)
-				return
-			}
-			board.Squares[i].Resolved = true
-			break
-		}
-	}
-
-	if err := h.Store.BingoBoards.Update(board); err != nil {
-		jsonError(w, "failed to update board", http.StatusInternalServerError)
-		return
-	}
-
-	h.checkBingo(board)
-
-	h.Broker.Broadcast(sse.EventBingoResolved, map[string]interface{}{
-		"board_id": boardID,
-		"position": position,
-	})
-
-	jsonResp(w, map[string]string{"message": "custom square resolved"}, http.StatusOK)
-}
-
 // 12 possible bingo lines on a 5x5 board
 var bingoLines = []struct {
 	name      string

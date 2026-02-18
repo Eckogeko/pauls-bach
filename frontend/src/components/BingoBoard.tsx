@@ -3,8 +3,6 @@ import type { BingoSquare, BingoEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
-const CUSTOM_POSITIONS = new Set([0, 4, 12, 20, 24]);
-
 interface BingoBoardViewProps {
   mode: "view";
   squares: BingoSquare[];
@@ -26,7 +24,6 @@ function getSquareLabel(
   sq: BingoSquare,
   bingoEvents: BingoEvent[]
 ): string {
-  if (sq.custom_text) return sq.custom_text;
   if (sq.bingo_event_id) {
     const ev = bingoEvents.find((e) => e.id === sq.bingo_event_id);
     return ev?.title ?? `Event #${sq.bingo_event_id}`;
@@ -47,35 +44,13 @@ export default function BingoBoard(props: BingoBoardProps) {
     <div className="grid grid-cols-5 gap-1.5 w-full max-w-lg mx-auto">
       {Array.from({ length: 25 }, (_, i) => {
         const sq = byPos.get(i);
-        const isCustom = CUSTOM_POSITIONS.has(i);
         const isWinning =
           props.mode === "view" && props.winningPositions?.has(i);
 
         if (props.mode === "build") {
-          const hasEvent = !isCustom && sq?.bingo_event_id;
+          const hasEvent = sq?.bingo_event_id;
           const label = hasEvent ? getSquareLabel(sq!, bingoEvents) : "";
 
-          if (isCustom) {
-            return (
-              <div
-                key={i}
-                className="aspect-square border rounded-md flex items-center justify-center p-1 border-primary/40 bg-primary/5"
-              >
-                <input
-                  type="text"
-                  placeholder="Custom"
-                  className="w-full h-full text-center text-xs bg-transparent outline-none placeholder:text-muted-foreground/50"
-                  value={sq?.custom_text ?? ""}
-                  onChange={(e) =>
-                    props.onSquareChange(i, { custom_text: e.target.value })
-                  }
-                  maxLength={60}
-                />
-              </div>
-            );
-          }
-
-          // Drop target for non-custom squares
           return (
             <div
               key={i}
@@ -138,9 +113,7 @@ export default function BingoBoard(props: BingoBoardProps) {
                 ? isWinning
                   ? "bg-green-500/30 border-green-500 text-green-700 dark:text-green-300 font-semibold"
                   : "bg-green-500/15 border-green-500/50 text-green-700 dark:text-green-400"
-                : isCustom
-                  ? "border-primary/40 bg-primary/5"
-                  : "border-border bg-card"
+                : "border-border bg-card"
             )}
           >
             <span className="text-[11px] leading-tight line-clamp-3">

@@ -138,7 +138,3 @@ export const resolveBingoEvent = (eventId: number) =>
     method: "POST",
   });
 
-export const resolveCustomSquare = (boardId: number, position: number) =>
-  api<{ message: string }>(`/api/admin/bingo/boards/${boardId}/squares/${position}/resolve`, {
-    method: "POST",
-  });
