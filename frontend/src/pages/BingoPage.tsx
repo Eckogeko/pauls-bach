@@ -9,6 +9,25 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Trophy, Check } from "lucide-react";
 
+const lineLabels: Record<string, string> = {
+  "row-0": "Top Row",
+  "row-1": "2nd Row",
+  "row-2": "Middle Row",
+  "row-3": "4th Row",
+  "row-4": "Bottom Row",
+  "col-0": "1st Column",
+  "col-1": "2nd Column",
+  "col-2": "Middle Column",
+  "col-3": "4th Column",
+  "col-4": "5th Column",
+  "diag-0": "Diagonal ↘",
+  "diag-1": "Diagonal ↗",
+};
+
+function readableLineName(line: string): string {
+  return lineLabels[line] ?? line;
+}
+
 function getWinningPositions(winners: BingoWinner[]): Set<number> {
   const lines: Record<string, number[]> = {
     "row-0": [0, 1, 2, 3, 4],
@@ -32,6 +51,11 @@ function getWinningPositions(winners: BingoWinner[]): Set<number> {
     }
   }
   return positions;
+}
+
+function getBoardProgress(squares: BingoSquare[]): { resolved: number; total: number } {
+  const resolved = squares.filter((sq) => sq.resolved).length;
+  return { resolved, total: 25 };
 }
 
 export default function BingoPage() {
@@ -194,9 +218,30 @@ export default function BingoPage() {
     };
   });
 
+  // Overall progress: how many bingo events have been resolved
+  const totalEvents = bingoEvents.length;
+  const resolvedEvents = bingoEvents.filter((e) => e.resolved).length;
+  const progressPct = totalEvents > 0 ? Math.round((resolvedEvents / totalEvents) * 100) : 0;
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Bingo</h1>
+
+      {/* Overall progress bar */}
+      {totalEvents > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Trip Progress</span>
+            <span className="font-medium">{resolvedEvents} of {totalEvents} events resolved</span>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full bg-green-500 transition-all duration-700 ease-out rounded-full"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {hasBoard && board ? (
         <>
@@ -205,7 +250,7 @@ export default function BingoPage() {
               <CardContent className="flex items-center gap-2 py-3">
                 <Trophy className="h-5 w-5 text-green-600" />
                 <span className="font-semibold text-green-700 dark:text-green-400">
-                  BINGO! You completed: {boardWinners.map((w) => w.line).join(", ")}
+                  BINGO! You completed: {boardWinners.map((w) => readableLineName(w.line)).join(", ")}
                 </span>
               </CardContent>
             </Card>
@@ -215,16 +260,31 @@ export default function BingoPage() {
             <CardHeader>
               <CardTitle className="text-base">Your Board</CardTitle>
               <CardDescription>
-                Resolved squares are highlighted.
+                Tap a square to see the full event. Resolved squares are highlighted.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <BingoBoard
                 mode="view"
                 squares={board.squares}
                 bingoEvents={bingoEvents}
                 winningPositions={getWinningPositions(boardWinners)}
               />
+              {/* Your board progress */}
+              {(() => {
+                const { resolved } = getBoardProgress(board.squares);
+                return (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                    <span>{resolved}/25 squares resolved</span>
+                    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full bg-green-500 transition-all duration-500 rounded-full"
+                        style={{ width: `${(resolved / 25) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </>
@@ -360,29 +420,43 @@ export default function BingoPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Other Boards</CardTitle>
-            <CardDescription>See how other players set up their boards.</CardDescription>
+            <CardDescription>See how other players are doing.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {allBoards
               .filter((b) => b.user_id !== board?.user_id)
-              .map((b) => (
-                <div key={b.id} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{b.username}</span>
-                    {b.winners && b.winners.length > 0 && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Trophy className="h-3 w-3" /> BINGO
-                      </Badge>
-                    )}
+              .map((b) => {
+                const { resolved } = getBoardProgress(b.squares);
+                return (
+                  <div key={b.id} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{b.username}</span>
+                        {b.winners && b.winners.length > 0 && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Trophy className="h-3 w-3" /> BINGO
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{resolved}/25</span>
+                        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-secondary">
+                          <div
+                            className="h-full bg-green-500 transition-all duration-500 rounded-full"
+                            style={{ width: `${(resolved / 25) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <BingoBoard
+                      mode="view"
+                      squares={b.squares}
+                      bingoEvents={bingoEvents}
+                      winningPositions={getWinningPositions(b.winners ?? [])}
+                    />
                   </div>
-                  <BingoBoard
-                    mode="view"
-                    squares={b.squares}
-                    bingoEvents={bingoEvents}
-                    winningPositions={getWinningPositions(b.winners ?? [])}
-                  />
-                </div>
-              ))}
+                );
+              })}
           </CardContent>
         </Card>
       )}
@@ -402,7 +476,7 @@ export default function BingoPage() {
                   <div>
                     <span className="font-medium">{w.username}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
-                      {w.line}
+                      {readableLineName(w.line)}
                     </span>
                   </div>
                   <Badge variant="secondary">BINGO</Badge>

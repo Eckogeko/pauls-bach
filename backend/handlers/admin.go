@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"pauls-bach/market"
 	"pauls-bach/models"
@@ -90,6 +91,15 @@ func (h *AdminHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		"event_type":  event.EventType,
 		"odds":        odds,
 	})
+
+	// Log activity
+	entry := &models.ActivityEntry{
+		Type:    "event_created",
+		Message: fmt.Sprintf("New market: '%s'", event.Title),
+		EventID: event.ID,
+	}
+	h.Store.Activity.Create(entry)
+	h.Broker.Broadcast(sse.EventActivityNew, entry)
 
 	jsonResp(w, map[string]interface{}{
 		"event": event,
@@ -326,6 +336,42 @@ func (h *AdminHandler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, map[string]string{"message": "event deleted"}, http.StatusOK)
 }
 
+func (h *AdminHandler) UnresolveEvent(w http.ResponseWriter, r *http.Request) {
+	eventID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		jsonError(w, "invalid event id", http.StatusBadRequest)
+		return
+	}
+
+	store.WriteLock()
+	defer store.WriteUnlock()
+
+	event, err := h.Store.Events.GetByID(eventID)
+	if err != nil {
+		jsonError(w, "event not found", http.StatusNotFound)
+		return
+	}
+	if event.Status != "resolved" {
+		jsonError(w, "event is not resolved", http.StatusBadRequest)
+		return
+	}
+
+	event.Status = "open"
+	event.WinningOutcomeID = 0
+	event.ResolvedAt = ""
+	if err := h.Store.Events.Update(event); err != nil {
+		jsonError(w, "failed to unresolve event", http.StatusInternalServerError)
+		return
+	}
+
+	h.Broker.Broadcast(sse.EventEventCreated, map[string]interface{}{
+		"event_id": eventID,
+		"title":    event.Title,
+	})
+
+	jsonResp(w, map[string]string{"message": "event unresolved"}, http.StatusOK)
+}
+
 func (h *AdminHandler) ResolveEvent(w http.ResponseWriter, r *http.Request) {
 	eventID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -384,6 +430,34 @@ func (h *AdminHandler) ResolveEvent(w http.ResponseWriter, r *http.Request) {
 		"winning_outcome_id": req.WinningOutcomeID,
 		"winner_label":       winnerLabel,
 	})
+
+	// Log activity: resolution
+	resolveEntry := &models.ActivityEntry{
+		Type:    "event_resolved",
+		Message: fmt.Sprintf("'%s' resolved — %s wins!", title, winnerLabel),
+		EventID: eventID,
+	}
+	h.Store.Activity.Create(resolveEntry)
+	h.Broker.Broadcast(sse.EventActivityNew, resolveEntry)
+
+	// Log activity: each winner payout
+	for _, uo := range result.UserOutcomes {
+		if !uo.Won || uo.Payout == 0 {
+			continue
+		}
+		winner, _ := h.Store.Users.GetByID(uo.UserID)
+		if winner == nil {
+			continue
+		}
+		payoutEntry := &models.ActivityEntry{
+			Type:    "payout",
+			Message: fmt.Sprintf("%s won %d pts from '%s'", winner.Username, uo.Payout, title),
+			UserID:  uo.UserID,
+			EventID: eventID,
+		}
+		h.Store.Activity.Create(payoutEntry)
+		h.Broker.Broadcast(sse.EventActivityNew, payoutEntry)
+	}
 
 	jsonResp(w, map[string]string{"message": "event resolved"}, http.StatusOK)
 }

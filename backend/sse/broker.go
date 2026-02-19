@@ -17,6 +17,7 @@ const (
 	EventUserResolved  = "user_resolved"
 	EventBingoResolved = "bingo_resolved"
 	EventBingoWinner   = "bingo_winner"
+	EventActivityNew   = "activity_new"
 )
 
 type Message struct {

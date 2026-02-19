@@ -23,6 +23,7 @@ type Store struct {
 	BingoEvents   *BingoEventStore
 	BingoBoards   *BingoBoardStore
 	BingoWinners  *BingoWinnerStore
+	Activity      *ActivityStore
 }
 
 func New(dataDir string) (*Store, error) {
@@ -40,6 +41,7 @@ func New(dataDir string) (*Store, error) {
 		"bingo_events.csv":   "id,title,resolved,created_at",
 		"bingo_boards.csv":   "id,user_id,squares,created_at",
 		"bingo_winners.csv":  "id,user_id,username,board_id,line,created_at",
+		"activity.csv":       "id,type,message,user_id,event_id,created_at",
 	}
 
 	for file, header := range headers {
@@ -61,5 +63,6 @@ func New(dataDir string) (*Store, error) {
 		BingoEvents:   &BingoEventStore{filePath: filepath.Join(dataDir, "bingo_events.csv")},
 		BingoBoards:   &BingoBoardStore{filePath: filepath.Join(dataDir, "bingo_boards.csv")},
 		BingoWinners:  &BingoWinnerStore{filePath: filepath.Join(dataDir, "bingo_winners.csv")},
+		Activity:      &ActivityStore{filePath: filepath.Join(dataDir, "activity.csv")},
 	}, nil
 }

@@ -87,6 +87,22 @@ func (s *BingoWinnerStore) DeleteByUserID(userID int) error {
 	return writeAllRows(s.filePath, bingoWinnerHeader, kept)
 }
 
+func (s *BingoWinnerStore) DeleteByBoardIDAndLine(boardID int, line string) error {
+	rows, err := readAllRows(s.filePath)
+	if err != nil {
+		return err
+	}
+	var kept [][]string
+	for _, row := range rows {
+		bid, _ := strconv.Atoi(row[3])
+		if bid == boardID && row[4] == line {
+			continue
+		}
+		kept = append(kept, row)
+	}
+	return writeAllRows(s.filePath, bingoWinnerHeader, kept)
+}
+
 func (s *BingoWinnerStore) Create(w *models.BingoWinner) error {
 	id, err := nextID(s.filePath)
 	if err != nil {

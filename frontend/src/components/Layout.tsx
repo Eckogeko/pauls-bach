@@ -16,6 +16,7 @@ import {
   Sun,
   Moon,
   Grid3X3,
+  Rss,
 } from "lucide-react";
 import { useState, useCallback, useEffect, useRef } from "react";
 
@@ -23,6 +24,7 @@ const navItems = [
   { to: "/events", label: "Markets", icon: TrendingUp },
   { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { to: "/history", label: "History", icon: History },
+  { to: "/activity", label: "Feed", icon: Rss },
 ];
 
 export default function Layout() {

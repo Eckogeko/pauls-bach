@@ -14,6 +14,8 @@ import {
   setUserBingo,
   setUserBalance,
   resetUserBingo,
+  unresolveEvent,
+  unresolveBingoEvent,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +45,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { Plus, X, CheckCircle2, Loader2, Grid3X3, Users, Pencil, Trash2 } from "lucide-react";
+import { Plus, X, CheckCircle2, Undo2, Loader2, Grid3X3, Users, Pencil, Trash2 } from "lucide-react";
 
 export default function AdminPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -448,7 +450,28 @@ export default function AdminPage() {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                    <Badge variant="secondary">{event.status}</Badge>
+                    {event.status === "resolved" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={async () => {
+                          if (!confirm(`Unresolve "${event.title}"? This will reopen the event but won't reverse payouts.`)) return;
+                          try {
+                            await unresolveEvent(event.id);
+                            toast.success("Event unresolved");
+                            fetchEvents();
+                          } catch (err) {
+                            toast.error(err instanceof Error ? err.message : "Failed to unresolve");
+                          }
+                        }}
+                      >
+                        <Undo2 className="h-3.5 w-3.5" />
+                        Unresolve
+                      </Button>
+                    ) : (
+                      <Badge variant="secondary">{event.status}</Badge>
+                    )}
                   </div>
                 </div>
               ))}
@@ -663,7 +686,24 @@ export default function AdminPage() {
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                   {be.resolved ? (
-                    <Badge variant="secondary">Resolved</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={async () => {
+                        if (!confirm(`Unresolve "${be.title}"? This will unmark it on all bingo boards.`)) return;
+                        try {
+                          await unresolveBingoEvent(be.id);
+                          toast.success("Bingo event unresolved");
+                          fetchBingoEvents();
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Failed to unresolve");
+                        }
+                      }}
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                      Unresolve
+                    </Button>
                   ) : (
                     <Button
                       variant="outline"

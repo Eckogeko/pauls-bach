@@ -100,6 +100,11 @@ export const resolveEvent = (eventId: number, winningOutcomeId: number) =>
     body: JSON.stringify({ winning_outcome_id: winningOutcomeId }),
   });
 
+export const unresolveEvent = (eventId: number) =>
+  api<{ message: string }>(`/api/admin/events/${eventId}/unresolve`, {
+    method: "POST",
+  });
+
 // Leaderboard
 export const getLeaderboard = () =>
   api<import("./types").LeaderboardEntry[]>("/api/leaderboard");
@@ -148,6 +153,10 @@ export const getBingoWinners = () =>
 export const getAllBingoBoards = () =>
   api<(import("./types").BingoBoard & { username: string; winners: import("./types").BingoWinner[] })[]>("/api/bingo/boards");
 
+// Activity
+export const getActivity = () =>
+  api<import("./types").ActivityEntry[]>("/api/activity");
+
 // Bingo Admin
 export const createBingoEvent = (title: string, rarity: string = "common") =>
   api<import("./types").BingoEvent>("/api/admin/bingo/events", {
@@ -163,6 +172,11 @@ export const updateBingoEvent = (eventId: number, data: { title: string; rarity:
 
 export const resolveBingoEvent = (eventId: number) =>
   api<{ message: string }>(`/api/admin/bingo/events/${eventId}/resolve`, {
+    method: "POST",
+  });
+
+export const unresolveBingoEvent = (eventId: number) =>
+  api<{ message: string }>(`/api/admin/bingo/events/${eventId}/unresolve`, {
     method: "POST",
   });
 

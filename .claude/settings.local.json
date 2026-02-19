@@ -3,7 +3,10 @@
     "allow": [
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(flyctl ssh console:*)",
+      "Bash(/opt/homebrew/share/google-cloud-sdk/bin/gcloud run services describe:*)",
+      "Bash(/opt/homebrew/share/google-cloud-sdk/bin/gcloud run services delete:*)"
     ]
   }
 }

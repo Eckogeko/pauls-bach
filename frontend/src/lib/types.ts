@@ -87,6 +87,15 @@ export interface BingoBoard {
   created_at: string;
 }
 
+export interface ActivityEntry {
+  id: number;
+  type: string;
+  message: string;
+  user_id: number;
+  event_id: number;
+  created_at: string;
+}
+
 export interface BingoWinner {
   id: number;
   user_id: number;

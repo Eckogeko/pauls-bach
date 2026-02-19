@@ -8,7 +8,8 @@ export interface SSEMessage {
     | "event_resolved"
     | "user_resolved"
     | "bingo_resolved"
-    | "bingo_winner";
+    | "bingo_winner"
+    | "activity_new";
   data?: Record<string, unknown>;
 }
 

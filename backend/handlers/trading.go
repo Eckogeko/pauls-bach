@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"pauls-bach/market"
 	"pauls-bach/middleware"
+	"pauls-bach/models"
 	"pauls-bach/sse"
 	"pauls-bach/store"
 	"strconv"
@@ -59,6 +61,25 @@ func (h *TradingHandler) Buy(w http.ResponseWriter, r *http.Request) {
 		"odds":     odds,
 	})
 
+	// Log activity
+	if event, _ := h.Store.Events.GetByID(eventID); event != nil {
+		outcomeLabel := ""
+		for _, o := range odds {
+			if o.OutcomeID == req.OutcomeID {
+				outcomeLabel = o.Label
+				break
+			}
+		}
+		entry := &models.ActivityEntry{
+			Type:    "trade",
+			Message: fmt.Sprintf("%s bought %d shares of %s on '%s'", user.Username, req.Amount, outcomeLabel, event.Title),
+			UserID:  userID,
+			EventID: eventID,
+		}
+		h.Store.Activity.Create(entry)
+		h.Broker.Broadcast(sse.EventActivityNew, entry)
+	}
+
 	jsonResp(w, map[string]interface{}{
 		"message": "purchase successful",
 		"odds":    odds,
@@ -97,6 +118,25 @@ func (h *TradingHandler) Sell(w http.ResponseWriter, r *http.Request) {
 		"event_id": eventID,
 		"odds":     odds,
 	})
+
+	// Log activity
+	if event, _ := h.Store.Events.GetByID(eventID); event != nil {
+		outcomeLabel := ""
+		for _, o := range odds {
+			if o.OutcomeID == req.OutcomeID {
+				outcomeLabel = o.Label
+				break
+			}
+		}
+		entry := &models.ActivityEntry{
+			Type:    "trade",
+			Message: fmt.Sprintf("%s sold %.0f shares of %s on '%s'", user.Username, req.Shares, outcomeLabel, event.Title),
+			UserID:  userID,
+			EventID: eventID,
+		}
+		h.Store.Activity.Create(entry)
+		h.Broker.Broadcast(sse.EventActivityNew, entry)
+	}
 
 	jsonResp(w, map[string]interface{}{
 		"message":     "sale successful",

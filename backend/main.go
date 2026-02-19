@@ -42,6 +42,7 @@ func main() {
 	historyH := &handlers.HistoryHandler{Store: s}
 	bingoH := &handlers.BingoHandler{Store: s}
 	bingoAdminH := &handlers.BingoAdminHandler{Store: s, Broker: broker}
+	activityH := &handlers.ActivityHandler{Store: s}
 
 	r := chi.NewRouter()
 	r.Use(chimw.Logger)
@@ -68,6 +69,7 @@ func main() {
 			r.Post("/bingo/board", bingoH.CreateBoard)
 			r.Get("/bingo/winners", bingoH.ListWinners)
 			r.Get("/bingo/boards", bingoH.ListBoards)
+			r.Get("/activity", activityH.GetRecent)
 		})
 
 		r.Group(func(r chi.Router) {
@@ -81,9 +83,11 @@ func main() {
 			r.Put("/admin/events/{id}", adminH.UpdateEvent)
 			r.Delete("/admin/events/{id}", adminH.DeleteEvent)
 			r.Post("/admin/events/{id}/resolve", adminH.ResolveEvent)
+			r.Post("/admin/events/{id}/unresolve", adminH.UnresolveEvent)
 			r.Post("/admin/bingo/events", bingoAdminH.CreateBingoEvent)
 			r.Put("/admin/bingo/events/{id}", bingoAdminH.UpdateBingoEvent)
 			r.Post("/admin/bingo/events/{id}/resolve", bingoAdminH.ResolveBingoEvent)
+			r.Post("/admin/bingo/events/{id}/unresolve", bingoAdminH.UnresolveBingoEvent)
 	
 		})
 	})
