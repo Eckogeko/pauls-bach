@@ -81,7 +81,7 @@ export default function ActivityPage() {
       <CardContent>
         {entries.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            No activity yet — trades, resolutions, and bingo wins will appear here.
+            No activity yet — trades and resolutions will appear here.
           </p>
         ) : (
           <div className="space-y-1">

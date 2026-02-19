@@ -231,7 +231,6 @@ func (h *BingoAdminHandler) ResolveBingoEvent(w http.ResponseWriter, r *http.Req
 		Message: fmt.Sprintf("Bingo event resolved: %s", event.Title),
 	}
 	h.Store.Activity.Create(entry)
-	h.Broker.Broadcast(sse.EventActivityNew, entry)
 
 	jsonResp(w, map[string]string{"message": "bingo event resolved"}, http.StatusOK)
 }
@@ -335,8 +334,7 @@ func (h *BingoAdminHandler) checkBingo(board *models.BingoBoard) {
 				Message: fmt.Sprintf("%s got BINGO! (%s)", username, readableLineName(line.name)),
 				UserID:  board.UserID,
 			}
-			h.Store.Activity.Create(bingoEntry)
-			h.Broker.Broadcast(sse.EventActivityNew, bingoEntry)
+				h.Store.Activity.Create(bingoEntry)
 		}
 	}
 }
