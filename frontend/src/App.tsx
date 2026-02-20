@@ -11,6 +11,7 @@ import HistoryPage from "@/pages/HistoryPage";
 import AdminPage from "@/pages/AdminPage";
 import BingoPage from "@/pages/BingoPage";
 import ActivityPage from "@/pages/ActivityPage";
+import PortfolioPage from "@/pages/PortfolioPage";
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -76,6 +77,7 @@ function AppRoutes() {
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/history" element={<HistoryPage />} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route
           path="/bingo"

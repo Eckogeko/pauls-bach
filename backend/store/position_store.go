@@ -43,6 +43,21 @@ func (s *PositionStore) fromRow(row []string) *models.Position {
 	}
 }
 
+func (s *PositionStore) GetByUserID(userID int) ([]models.Position, error) {
+	rows, err := readAllRows(s.filePath)
+	if err != nil {
+		return nil, err
+	}
+	var positions []models.Position
+	for _, row := range rows {
+		uid, _ := strconv.Atoi(row[1])
+		if uid == userID {
+			positions = append(positions, *s.fromRow(row))
+		}
+	}
+	return positions, nil
+}
+
 func (s *PositionStore) GetByEventID(eventID int) ([]models.Position, error) {
 	rows, err := readAllRows(s.filePath)
 	if err != nil {

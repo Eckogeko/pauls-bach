@@ -43,6 +43,7 @@ func main() {
 	bingoH := &handlers.BingoHandler{Store: s}
 	bingoAdminH := &handlers.BingoAdminHandler{Store: s, Broker: broker}
 	activityH := &handlers.ActivityHandler{Store: s}
+	portfolioH := &handlers.PortfolioHandler{Store: s, Engine: engine}
 
 	r := chi.NewRouter()
 	r.Use(chimw.Logger)
@@ -70,6 +71,7 @@ func main() {
 			r.Get("/bingo/winners", bingoH.ListWinners)
 			r.Get("/bingo/boards", bingoH.ListBoards)
 			r.Get("/activity", activityH.GetRecent)
+			r.Get("/portfolio", portfolioH.Get)
 			r.Post("/events", adminH.CreateEvent)
 		})
 

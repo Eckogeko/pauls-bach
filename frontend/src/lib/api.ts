@@ -160,6 +160,10 @@ export const getBingoWinners = () =>
 export const getAllBingoBoards = () =>
   api<(import("./types").BingoBoard & { username: string; winners: import("./types").BingoWinner[] })[]>("/api/bingo/boards");
 
+// Portfolio
+export const getPortfolio = () =>
+  api<import("./types").Portfolio>("/api/portfolio");
+
 // Activity
 export const getActivity = () =>
   api<import("./types").ActivityEntry[]>("/api/activity");

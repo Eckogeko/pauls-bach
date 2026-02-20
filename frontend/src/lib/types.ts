@@ -88,6 +88,23 @@ export interface BingoBoard {
   created_at: string;
 }
 
+export interface PortfolioPosition {
+  event_id: number;
+  event_title: string;
+  outcome_id: number;
+  outcome_label: string;
+  shares: number;
+  avg_price: number;
+  potential_payout: number;
+}
+
+export interface Portfolio {
+  positions: PortfolioPosition[];
+  total_invested: number;
+  total_potential: number;
+  active_markets: number;
+}
+
 export interface ActivityEntry {
   id: number;
   type: string;
