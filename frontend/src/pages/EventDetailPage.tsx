@@ -351,24 +351,41 @@ export default function EventDetailPage() {
                 <CardTitle className="text-base">Your Positions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {event.user_positions.map((pos) => (
-                  <div
-                    key={pos.outcome_id}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <div>
-                      <div className="font-medium">{pos.outcome_label}</div>
-                      <div className="text-xs text-muted-foreground">
-                        Avg price: {pos.avg_price.toFixed(2)}
+                {event.user_positions.map((pos) => {
+                  const totalPool = event.odds.reduce((sum, o) => sum + o.shares, 0);
+                  const outcomeShares = event.odds.find((o) => o.outcome_id === pos.outcome_id)?.shares ?? 0;
+                  const poolPayout = outcomeShares > 0
+                    ? Math.round(totalPool * (pos.shares / outcomeShares))
+                    : 0;
+                  const bonus = Math.round(pos.shares * 0.25) + 20;
+                  const potentialWin = poolPayout + bonus;
+                  const cost = Math.round(pos.shares);
+                  const profit = potentialWin - cost;
+
+                  return (
+                    <div
+                      key={pos.outcome_id}
+                      className="rounded-lg border p-3 space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-sm">
+                        <div>
+                          <div className="font-medium">{pos.outcome_label}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {Math.round(pos.shares)} shares · avg {pos.avg_price.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                            +{potentialWin} pts if wins
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {profit >= 0 ? "+" : ""}{profit} net profit
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        {Math.round(pos.shares)} shares
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           )}
