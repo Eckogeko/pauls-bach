@@ -33,7 +33,7 @@ func New(dataDir string) (*Store, error) {
 
 	headers := map[string]string{
 		"users.csv":          "id,username,pin_hash,balance,is_admin,bingo,created_at",
-		"events.csv":         "id,title,description,event_type,status,winning_outcome_id,created_at,resolved_at",
+		"events.csv":         "id,title,description,event_type,status,winning_outcome_id,created_at,resolved_at,creator_id,bounty_paid",
 		"outcomes.csv":       "id,event_id,label",
 		"positions.csv":      "id,user_id,event_id,outcome_id,shares,avg_price,created_at",
 		"transactions.csv":   "id,user_id,event_id,outcome_id,tx_type,shares,points,created_at",

@@ -9,4 +9,6 @@ type Event struct {
 	WinningOutcomeID int    `json:"winning_outcome_id,omitempty"`
 	CreatedAt        string `json:"created_at"`
 	ResolvedAt       string `json:"resolved_at,omitempty"`
+	CreatorID        int    `json:"creator_id,omitempty"`
+	BountyPaid       bool   `json:"bounty_paid,omitempty"`
 }

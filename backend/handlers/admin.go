@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"pauls-bach/market"
+	"pauls-bach/middleware"
 	"pauls-bach/models"
 	"pauls-bach/sse"
 	"pauls-bach/store"
@@ -52,11 +53,14 @@ func (h *AdminHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	store.WriteLock()
 	defer store.WriteUnlock()
 
+	creatorID, _ := r.Context().Value(middleware.UserIDKey).(int)
+
 	event := &models.Event{
 		Title:       req.Title,
 		Description: req.Description,
 		EventType:   req.EventType,
 		Status:      "open",
+		CreatorID:   creatorID,
 	}
 	if err := h.Store.Events.Create(event); err != nil {
 		jsonError(w, "failed to create event", http.StatusInternalServerError)
@@ -93,9 +97,14 @@ func (h *AdminHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Log activity
+	creatorName := "Admin"
+	if creator, _ := h.Store.Users.GetByID(creatorID); creator != nil {
+		creatorName = creator.Username
+	}
 	entry := &models.ActivityEntry{
 		Type:    "event_created",
-		Message: fmt.Sprintf("New market: '%s'", event.Title),
+		Message: fmt.Sprintf("%s created '%s'", creatorName, event.Title),
+		UserID:  creatorID,
 		EventID: event.ID,
 	}
 	h.Store.Activity.Create(entry)

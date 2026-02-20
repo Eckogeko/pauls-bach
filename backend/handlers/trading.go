@@ -78,6 +78,37 @@ func (h *TradingHandler) Buy(w http.ResponseWriter, r *http.Request) {
 		}
 		h.Store.Activity.Create(entry)
 		h.Broker.Broadcast(sse.EventActivityNew, entry)
+
+		// Check bounty: award 10 pts to creator when 5+ unique users bet
+		if event.CreatorID > 0 && !event.BountyPaid {
+			positions, _ := h.Store.Positions.GetByEventID(eventID)
+			uniqueUsers := make(map[int]bool)
+			for _, p := range positions {
+				uniqueUsers[p.UserID] = true
+			}
+			if len(uniqueUsers) >= 5 {
+				event.BountyPaid = true
+				h.Store.Events.Update(event)
+				if creator, _ := h.Store.Users.GetByID(event.CreatorID); creator != nil {
+					creator.Balance += 10
+					h.Store.Users.Update(creator)
+					h.Store.Transactions.Create(&models.Transaction{
+						UserID:  event.CreatorID,
+						EventID: eventID,
+						TxType:  "bonus",
+						Points:  10,
+					})
+					bountyEntry := &models.ActivityEntry{
+						Type:    "bounty",
+						Message: fmt.Sprintf("%s earned 10 pts bounty — 5 players bet on '%s'", creator.Username, event.Title),
+						UserID:  event.CreatorID,
+						EventID: eventID,
+					}
+					h.Store.Activity.Create(bountyEntry)
+					h.Broker.Broadcast(sse.EventActivityNew, bountyEntry)
+				}
+			}
+		}
 	}
 
 	jsonResp(w, map[string]interface{}{

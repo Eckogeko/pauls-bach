@@ -11,12 +11,20 @@ type EventStore struct {
 	filePath string
 }
 
-var eventHeader = []string{"id", "title", "description", "event_type", "status", "winning_outcome_id", "created_at", "resolved_at"}
+var eventHeader = []string{"id", "title", "description", "event_type", "status", "winning_outcome_id", "created_at", "resolved_at", "creator_id", "bounty_paid"}
 
 func (s *EventStore) toRow(e *models.Event) []string {
 	winID := ""
 	if e.WinningOutcomeID != 0 {
 		winID = strconv.Itoa(e.WinningOutcomeID)
+	}
+	creatorID := ""
+	if e.CreatorID != 0 {
+		creatorID = strconv.Itoa(e.CreatorID)
+	}
+	bounty := "0"
+	if e.BountyPaid {
+		bounty = "1"
 	}
 	return []string{
 		strconv.Itoa(e.ID),
@@ -27,13 +35,15 @@ func (s *EventStore) toRow(e *models.Event) []string {
 		winID,
 		e.CreatedAt,
 		e.ResolvedAt,
+		creatorID,
+		bounty,
 	}
 }
 
 func (s *EventStore) fromRow(row []string) (*models.Event, error) {
 	id, _ := strconv.Atoi(row[0])
 	winID, _ := strconv.Atoi(row[5])
-	return &models.Event{
+	e := &models.Event{
 		ID:               id,
 		Title:            row[1],
 		Description:      row[2],
@@ -42,7 +52,15 @@ func (s *EventStore) fromRow(row []string) (*models.Event, error) {
 		WinningOutcomeID: winID,
 		CreatedAt:        row[6],
 		ResolvedAt:       row[7],
-	}, nil
+	}
+	// Handle new fields (backwards-compatible with old CSVs)
+	if len(row) > 8 {
+		e.CreatorID, _ = strconv.Atoi(row[8])
+	}
+	if len(row) > 9 && row[9] == "1" {
+		e.BountyPaid = true
+	}
+	return e, nil
 }
 
 func (s *EventStore) GetAll() ([]models.Event, error) {

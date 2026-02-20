@@ -152,6 +152,7 @@ export default function EventsPage() {
   const [description, setDescription] = useState("");
   const [eventType, setEventType] = useState("binary");
   const [outcomes, setOutcomes] = useState(["Yes", "No"]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const fetchEvents = useCallback(() => {
     getEvents()
@@ -214,6 +215,7 @@ export default function EventsPage() {
       setEventType("binary");
       setOutcomes(["Yes", "No"]);
       setCreateOpen(false);
+      setShowAdvanced(false);
       fetchEvents();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to create bet");
@@ -242,78 +244,93 @@ export default function EventsPage() {
               <DialogHeader>
                 <DialogTitle>Create Bet</DialogTitle>
                 <DialogDescription>
-                  Create a new prediction market for everyone to trade on.
+                  Defaults to Yes/No. Earn 10 pts if 5+ players bet on it!
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Title</Label>
+                  <Label>What's the bet?</Label>
                   <Input
-                    placeholder="Will it rain tomorrow?"
+                    placeholder="Will Paul finish his drink?"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
+                    autoFocus
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Description (optional)</Label>
+                  <Label>Details (optional)</Label>
                   <Input
                     placeholder="Additional context..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={eventType} onValueChange={handleEventTypeChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="binary">Binary (Yes/No)</SelectItem>
-                      <SelectItem value="multi">Multiple Outcomes</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Outcomes</Label>
-                  <div className="space-y-2">
-                    {outcomes.map((outcome, i) => (
-                      <div key={i} className="flex gap-2">
-                        <Input
-                          placeholder={`Outcome ${i + 1}`}
-                          value={outcome}
-                          onChange={(e) => {
-                            const next = [...outcomes];
-                            next[i] = e.target.value;
-                            setOutcomes(next);
-                          }}
-                          disabled={eventType === "binary"}
-                        />
-                        {eventType === "multi" && outcomes.length > 2 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              setOutcomes(outcomes.filter((_, j) => j !== i))
-                            }
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => {
+                    setShowAdvanced(!showAdvanced);
+                    if (showAdvanced) {
+                      setEventType("binary");
+                      setOutcomes(["Yes", "No"]);
+                    }
+                  }}
+                >
+                  {showAdvanced ? "- Hide options" : "+ Multiple outcomes"}
+                </button>
+                {showAdvanced && (
+                  <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Type</Label>
+                      <Select value={eventType} onValueChange={handleEventTypeChange}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="binary">Binary (Yes/No)</SelectItem>
+                          <SelectItem value="multi">Multiple Outcomes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     {eventType === "multi" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setOutcomes([...outcomes, ""])}
-                      >
-                        <Plus className="mr-1 h-3.5 w-3.5" />
-                        Add Outcome
-                      </Button>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Outcomes</Label>
+                        {outcomes.map((outcome, i) => (
+                          <div key={i} className="flex gap-2">
+                            <Input
+                              placeholder={`Outcome ${i + 1}`}
+                              value={outcome}
+                              onChange={(e) => {
+                                const next = [...outcomes];
+                                next[i] = e.target.value;
+                                setOutcomes(next);
+                              }}
+                            />
+                            {outcomes.length > 2 && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  setOutcomes(outcomes.filter((_, j) => j !== i))
+                                }
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setOutcomes([...outcomes, ""])}
+                        >
+                          <Plus className="mr-1 h-3.5 w-3.5" />
+                          Add Outcome
+                        </Button>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
                 <Button
                   className="w-full"
                   onClick={handleCreate}
