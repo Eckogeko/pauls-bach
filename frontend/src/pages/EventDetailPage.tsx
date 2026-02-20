@@ -258,9 +258,18 @@ export default function EventDetailPage() {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {Math.round(o.shares)} shares outstanding
-                  </div>
+                  {(event.bettors?.[o.outcome_id]?.length ?? 0) > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {event.bettors[o.outcome_id].map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </button>
               );
             })}

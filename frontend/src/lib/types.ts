@@ -25,6 +25,7 @@ export interface Event {
   resolved_at?: string;
   last_trade_at?: string;
   odds: OutcomeOdds[];
+  bettors: Record<number, string[]>;
 }
 
 export interface EventDetail extends Event {

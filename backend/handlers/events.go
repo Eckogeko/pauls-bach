@@ -18,16 +18,17 @@ type EventHandler struct {
 }
 
 type eventResponse struct {
-	ID               int                `json:"id"`
-	Title            string             `json:"title"`
-	Description      string             `json:"description"`
-	EventType        string             `json:"event_type"`
-	Status           string             `json:"status"`
-	WinningOutcomeID int                `json:"winning_outcome_id,omitempty"`
-	CreatedAt        string             `json:"created_at"`
-	ResolvedAt       string             `json:"resolved_at,omitempty"`
-	LastTradeAt      string             `json:"last_trade_at,omitempty"`
-	Odds             []market.OutcomeOdds `json:"odds"`
+	ID               int                        `json:"id"`
+	Title            string                     `json:"title"`
+	Description      string                     `json:"description"`
+	EventType        string                     `json:"event_type"`
+	Status           string                     `json:"status"`
+	WinningOutcomeID int                        `json:"winning_outcome_id,omitempty"`
+	CreatedAt        string                     `json:"created_at"`
+	ResolvedAt       string                     `json:"resolved_at,omitempty"`
+	LastTradeAt      string                     `json:"last_trade_at,omitempty"`
+	Odds             []market.OutcomeOdds       `json:"odds"`
+	Bettors          map[int][]string           `json:"bettors"`
 }
 
 type eventDetailResponse struct {
@@ -40,6 +41,17 @@ type userPosition struct {
 	OutcomeLabel string `json:"outcome_label"`
 	Shares      float64 `json:"shares"`
 	AvgPrice    float64 `json:"avg_price"`
+}
+
+func (h *EventHandler) getBettors(eventID int) map[int][]string {
+	bettors := make(map[int][]string)
+	positions, _ := h.Store.Positions.GetByEventID(eventID)
+	for _, p := range positions {
+		if user, err := h.Store.Users.GetByID(p.UserID); err == nil {
+			bettors[p.OutcomeID] = append(bettors[p.OutcomeID], user.Username)
+		}
+	}
+	return bettors
 }
 
 func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +72,7 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 		if odds == nil {
 			odds = []market.OutcomeOdds{}
 		}
+		bettors := h.getBettors(e.ID)
 		resp = append(resp, eventResponse{
 			ID:               e.ID,
 			Title:            e.Title,
@@ -71,6 +84,7 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 			ResolvedAt:       e.ResolvedAt,
 			LastTradeAt:      lastTrades[e.ID],
 			Odds:             odds,
+			Bettors:          bettors,
 		})
 	}
 	if resp == nil {
@@ -114,6 +128,7 @@ func (h *EventHandler) Get(w http.ResponseWriter, r *http.Request) {
 		odds = []market.OutcomeOdds{}
 	}
 
+	bettors := h.getBettors(eventID)
 	resp := eventDetailResponse{
 		eventResponse: eventResponse{
 			ID:               event.ID,
@@ -125,6 +140,7 @@ func (h *EventHandler) Get(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:        event.CreatedAt,
 			ResolvedAt:       event.ResolvedAt,
 			Odds:             odds,
+			Bettors:          bettors,
 		},
 	}
 

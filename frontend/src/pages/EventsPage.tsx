@@ -40,7 +40,7 @@ const statusConfig = {
   },
 };
 
-function OddsBar({ odds }: { odds: Event["odds"] }) {
+function OddsBar({ odds, bettors }: { odds: Event["odds"]; bettors?: Record<number, string[]> }) {
   const total = odds.reduce((sum, o) => sum + o.odds, 0);
   if (total === 0) return null;
 
@@ -64,17 +64,25 @@ function OddsBar({ odds }: { odds: Event["odds"] }) {
         ))}
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {odds.map((o, i) => (
-          <div key={o.outcome_id} className="flex items-center gap-1.5 text-xs">
-            <div
-              className={`h-2 w-2 rounded-full ${colors[i % colors.length]}`}
-            />
-            <span className="text-muted-foreground">{o.label}</span>
-            <span className="font-medium">
-              {Math.round((o.odds / total) * 100)}%
-            </span>
-          </div>
-        ))}
+        {odds.map((o, i) => {
+          const names = bettors?.[o.outcome_id] ?? [];
+          return (
+            <div key={o.outcome_id} className="flex items-center gap-1.5 text-xs">
+              <div
+                className={`h-2 w-2 rounded-full ${colors[i % colors.length]}`}
+              />
+              <span className="text-muted-foreground">{o.label}</span>
+              <span className="font-medium">
+                {Math.round((o.odds / total) * 100)}%
+              </span>
+              {names.length > 0 && (
+                <span className="text-muted-foreground">
+                  · {names.join(", ")}
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -423,7 +431,7 @@ export default function EventsPage() {
                         })()}
                       </div>
                     ) : (
-                      <OddsBar odds={event.odds} />
+                      <OddsBar odds={event.odds} bettors={event.bettors} />
                     )}
                   </CardContent>
                 </Card>
