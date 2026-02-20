@@ -325,7 +325,7 @@ func (e *Engine) Resolve(eventID, winningOutcomeID int) (*ResolveResult, error) 
 				}
 			}
 
-			// Distribute pool to winners proportionally + 50pt bonus
+			// Distribute pool to winners proportionally + 25% of bet + 20pt bonus
 			for _, p := range positions {
 				if p.OutcomeID != winningOutcomeID {
 					continue
@@ -335,7 +335,8 @@ func (e *Engine) Resolve(eventID, winningOutcomeID int) (*ResolveResult, error) 
 					continue
 				}
 				payout := int(math.Round(totalPool * (p.Shares / winningShares)))
-				user.Balance += payout + 50
+				bonus := int(math.Round(p.Shares*0.25)) + 20
+				user.Balance += payout + bonus
 				e.Store.Users.Update(user)
 				e.Store.Transactions.Create(&models.Transaction{
 					UserID:    p.UserID,
@@ -351,14 +352,14 @@ func (e *Engine) Resolve(eventID, winningOutcomeID int) (*ResolveResult, error) 
 					OutcomeID: p.OutcomeID,
 					TxType:    "bonus",
 					Shares:    0,
-					Points:    50,
+					Points:    bonus,
 				})
 				if !seen[p.UserID] {
 					seen[p.UserID] = true
 					result.UserOutcomes = append(result.UserOutcomes, UserOutcome{
 						UserID: p.UserID,
 						Won:    true,
-						Payout: payout + 50,
+						Payout: payout + bonus,
 						Refund: false,
 					})
 				}

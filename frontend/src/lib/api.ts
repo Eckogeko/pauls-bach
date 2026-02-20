@@ -76,6 +76,13 @@ export const sellShares = (eventId: number, outcomeId: number, shares: number) =
     { method: "POST", body: JSON.stringify({ outcome_id: outcomeId, shares }) }
   );
 
+// User event creation
+export const createUserEvent = (title: string, description: string, eventType: string, outcomes: string[]) =>
+  api<{ event: import("./types").Event }>("/api/events", {
+    method: "POST",
+    body: JSON.stringify({ title, description, event_type: eventType, outcomes }),
+  });
+
 // Admin
 export const createEvent = (title: string, description: string, eventType: string, outcomes: string[]) =>
   api<{ event: import("./types").Event }>("/api/admin/events", {

@@ -1,13 +1,32 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import type { Event, OutcomeOdds } from "@/lib/types";
-import { getEvents } from "@/lib/api";
+import { getEvents, createUserEvent } from "@/lib/api";
 import { useEventStream } from "@/hooks/useEventStream";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Clock, CheckCircle2, BarChart3 } from "lucide-react";
+import { toast } from "sonner";
+import { TrendingUp, Clock, CheckCircle2, BarChart3, Plus, X, Loader2 } from "lucide-react";
 
 type StatusFilter = "all" | "open" | "closed" | "resolved";
 
@@ -126,6 +145,14 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>("open");
 
+  // Create bet dialog state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [eventType, setEventType] = useState("binary");
+  const [outcomes, setOutcomes] = useState(["Yes", "No"]);
+
   const fetchEvents = useCallback(() => {
     getEvents()
       .then(setEvents)
@@ -160,6 +187,41 @@ export default function EventsPage() {
     )
   );
 
+  const handleEventTypeChange = (value: string) => {
+    setEventType(value);
+    if (value === "binary") {
+      setOutcomes(["Yes", "No"]);
+    } else {
+      setOutcomes(["", "", ""]);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    if (outcomes.some((o) => !o.trim())) {
+      toast.error("All outcomes must have labels");
+      return;
+    }
+    setCreateLoading(true);
+    try {
+      await createUserEvent(title.trim(), description.trim(), eventType, outcomes);
+      toast.success("Bet created");
+      setTitle("");
+      setDescription("");
+      setEventType("binary");
+      setOutcomes(["Yes", "No"]);
+      setCreateOpen(false);
+      fetchEvents();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create bet");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   const filtered =
     filter === "all" ? events : events.filter((e) => e.status === filter);
 
@@ -167,7 +229,106 @@ export default function EventsPage() {
     <div className="animate-in fade-in duration-300 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Markets</h1>
-        <h2 className="text-xl font-medium justify-left text-muted-foreground">Recent Events</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-medium text-muted-foreground hidden sm:block">Recent Events</h2>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1.5">
+                <Plus className="h-4 w-4" />
+                Create Bet
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Bet</DialogTitle>
+                <DialogDescription>
+                  Create a new prediction market for everyone to trade on.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Title</Label>
+                  <Input
+                    placeholder="Will it rain tomorrow?"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description (optional)</Label>
+                  <Input
+                    placeholder="Additional context..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={eventType} onValueChange={handleEventTypeChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="binary">Binary (Yes/No)</SelectItem>
+                      <SelectItem value="multi">Multiple Outcomes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Outcomes</Label>
+                  <div className="space-y-2">
+                    {outcomes.map((outcome, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input
+                          placeholder={`Outcome ${i + 1}`}
+                          value={outcome}
+                          onChange={(e) => {
+                            const next = [...outcomes];
+                            next[i] = e.target.value;
+                            setOutcomes(next);
+                          }}
+                          disabled={eventType === "binary"}
+                        />
+                        {eventType === "multi" && outcomes.length > 2 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setOutcomes(outcomes.filter((_, j) => j !== i))
+                            }
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    {eventType === "multi" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOutcomes([...outcomes, ""])}
+                      >
+                        <Plus className="mr-1 h-3.5 w-3.5" />
+                        Add Outcome
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={handleCreate}
+                  disabled={createLoading}
+                >
+                  {createLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Create Bet"
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Recent results carousel */}
@@ -199,7 +360,7 @@ export default function EventsPage() {
           <p className="text-lg font-medium">No markets found</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {filter === "all"
-              ? "Markets will appear here once an admin creates them."
+              ? "No markets yet. Create the first bet!"
               : `No ${filter} markets right now. Try a different filter.`}
           </p>
         </div>

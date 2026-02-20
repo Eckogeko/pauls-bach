@@ -70,6 +70,7 @@ func main() {
 			r.Get("/bingo/winners", bingoH.ListWinners)
 			r.Get("/bingo/boards", bingoH.ListBoards)
 			r.Get("/activity", activityH.GetRecent)
+			r.Post("/events", adminH.CreateEvent)
 		})
 
 		r.Group(func(r chi.Router) {
